@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sijagajiwa-v1';
+const CACHE_NAME = 'sijagajiwa-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,12 @@ const ASSETS = [
   './js/pages.js',
   './js/ui.js',
   './js/firebase-config.js',
-  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap'
+  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap',
+  'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js',
+  './assets/icon.svg'
 ];
 
 // Install Event
