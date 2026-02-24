@@ -4,8 +4,8 @@
   "description": "Sistem Informasi & Pemantauan ODGJ Terintegrasi",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0b2d4e",
-  "theme_color": "#0b2d4e",
+  "background_color": "#2596be",
+  "theme_color": "#2596be",
   "icons": [
     {
       "src": "assets/icon.svg",
