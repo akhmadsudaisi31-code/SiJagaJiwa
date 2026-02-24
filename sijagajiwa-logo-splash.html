@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SiJaga Jiwa — Logo & Splash Screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --navy:    #0B2D4E;
+    --blue:    #1565C0;
+    --teal:    #00897B;
+    --teal-lt: #26A69A;
+    --gold:    #F9A825;
+    --white:   #FFFFFF;
+    --offwhite:#F4F8FB;
+    --muted:   #7B93A8;
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: #0d1b2a;
+    color: #fff;
+    min-height: 100vh;
+  }
+
+  /* ===== NAV TABS ===== */
+  .tabs {
+    display: flex; gap: 0; background: #111d2b;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 0 32px; position: sticky; top: 0; z-index: 100;
+  }
+  .tab {
+    padding: 16px 24px; cursor: pointer; font-size: 13px; font-weight: 600;
+    color: var(--muted); border-bottom: 3px solid transparent;
+    transition: all 0.2s; letter-spacing: 0.3px;
+  }
+  .tab.active { color: #fff; border-bottom-color: var(--teal-lt); }
+  .tab:hover { color: #fff; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ===== SECTION WRAPPER ===== */
+  .section {
+    padding: 48px 40px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--teal-lt);
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px; color: #fff; margin-bottom: 40px;
+    line-height: 1.2;
+  }
+
+  /* ================================================================
+     PANEL 1 — LOGO SHOWCASE
+  ================================================================ */
+
+  .logo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 40px;
+  }
+
+  /* --- Logo Card --- */
+  .logo-card {
+    border-radius: 20px;
+    padding: 48px 32px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+    min-height: 280px;
+    position: relative;
+    overflow: hidden;
+  }
+  .logo-card .card-label {
+    position: absolute; top: 16px; left: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; opacity: 0.5;
+  }
+
+  /* Variant A — Dark Navy */
+  .logo-card.dark {
+    background: linear-gradient(145deg, #0B2D4E 0%, #0d3b5e 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  /* Variant B — White */
+  .logo-card.light {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+  .logo-card.light .card-label { color: #aaa; }
+  /* Variant C — Gradient */
+  .logo-card.gradient {
+    background: linear-gradient(135deg, #0B2D4E 0%, #00897B 100%);
+  }
+  /* Variant D — Teal */
+  .logo-card.teal-bg {
+    background: linear-gradient(135deg, #00897B 0%, #26A69A 100%);
+  }
+
+  /* ===== SVG LOGO COMPONENT ===== */
+  .logo-wrap { display: flex; align-items: center; gap: 16px; }
+  .logo-wrap.vertical { flex-direction: column; gap: 12px; text-align: center; }
+
+  .logo-icon-svg {
+    flex-shrink: 0;
+  }
+
+  .logo-text-group { display: flex; flex-direction: column; }
+  .logo-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px; font-weight: 800; letter-spacing: -0.5px;
+    line-height: 1;
+  }
+  .logo-name .si { color: var(--teal-lt); }
+  .logo-name .jaga { color: inherit; }
+  .logo-name .jiwa { color: var(--gold); }
+
+  .logo-name.on-light .si { color: var(--teal); }
+  .logo-name.on-light .jaga { color: var(--navy); }
+  .logo-name.on-light .jiwa { color: #E65100; }
+
+  .logo-tagline {
+    font-size: 11px; font-weight: 500; letter-spacing: 1.2px;
+    text-transform: uppercase; margin-top: 5px; opacity: 0.7;
+  }
+  .logo-tagline.on-light { color: var(--navy); }
+
+  .logo-by {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.8px;
+    text-transform: uppercase; margin-top: 2px; opacity: 0.5;
+  }
+
+  /* ICON SIZES */
+  .icon-lg { width: 72px; height: 72px; }
+  .icon-md { width: 56px; height: 56px; }
+  .icon-sm { width: 44px; height: 44px; }
+  .icon-xs { width: 32px; height: 32px; }
+
+  /* ===== ICON ONLY GRID ===== */
+  .icon-grid {
+    display: flex; flex-wrap: wrap; gap: 20px; align-items: center;
+    padding: 32px; background: rgba(255,255,255,0.04); border-radius: 16px;
+    margin-bottom: 24px;
+  }
+  .icon-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .icon-item span { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+  /* Icon on different BG chips */
+  .chip { border-radius: 14px; padding: 16px; display: flex; align-items: center; justify-content: center; }
+  .chip.c-navy { background: var(--navy); }
+  .chip.c-white { background: #fff; }
+  .chip.c-teal { background: var(--teal); }
+  .chip.c-gold { background: var(--gold); }
+
+  /* ===== COLORS ===== */
+  .color-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .color-chip {
+    border-radius: 14px; padding: 20px 24px;
+    display: flex; flex-direction: column; gap: 8px; min-width: 140px;
+  }
+  .color-name { font-size: 13px; font-weight: 700; }
+  .color-hex { font-size: 12px; opacity: 0.7; font-family: monospace; }
+  .color-use { font-size: 11px; opacity: 0.6; }
+
+  /* ===== TYPOGRAPHY ===== */
+  .type-row { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .type-sample { font-family: 'Playfair Display', serif; }
+  .type-meta { font-size: 11px; color: var(--muted); margin-top: 6px; letter-spacing: 0.5px; }
+
+  /* ================================================================
+     PANEL 2 — SPLASH SCREEN MOCKUP
+  ================================================================ */
+  .splash-showcase {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+
+  .phone-frame {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+    border-radius: 40px;
+    padding: 10px;
+    background: #1a1a1a;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.1);
+    position: relative;
+  }
+  .phone-notch {
+    width: 100px; height: 28px;
+    background: #1a1a1a;
+    border-radius: 0 0 18px 18px;
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 10;
+  }
+  .phone-screen {
+    border-radius: 32px;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 9/19;
+    position: relative;
+  }
+
+  /* === SPLASH A — Dark Navy === */
+  .splash-a {
+    background: linear-gradient(160deg, #0B2D4E 0%, #0d3b5e 60%, #00695C 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%; padding: 40px 24px;
+    position: relative; overflow: hidden;
+  }
+  .splash-a::before {
+    content: ''; position: absolute;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,137,123,0.25) 0%, transparent 70%);
+    top: -80px; right: -80px;
+  }
+  .splash-a::after {
+    content: ''; position: absolute;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(249,168,37,0.12) 0%, transparent 70%);
+    bottom: 60px; left: -60px;
+  }
+
+  /* === SPLASH B — Gradient Teal === */
+  .splash-b {
+    background: linear-gradient(180deg, #004D40 0%, #00695C 40%, #0B2D4E 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%; padding: 40px 24px;
+    position: relative; overflow: hidden;
+  }
+  .splash-b::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* === SPLASH C — White Clean === */
+  .splash-c {
+    background: linear-gradient(160deg, #F4F8FB 0%, #E8F4F1 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%; padding: 40px 24px;
+    position: relative; overflow: hidden;
+  }
+  .splash-c::before {
+    content: ''; position: absolute;
+    width: 250px; height: 250px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,137,123,0.12) 0%, transparent 70%);
+    top: -60px; right: -60px;
+  }
+  .splash-c::after {
+    content: ''; position: absolute;
+    width: 180px; height: 180px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(11,45,78,0.08) 0%, transparent 70%);
+    bottom: 40px; left: -40px;
+  }
+
+  /* Splash content */
+  .splash-logo-wrap { display: flex; flex-direction: column; align-items: center; z-index: 2; }
+  .splash-appname {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px; font-weight: 900; text-align: center;
+    line-height: 1.1; margin-top: 16px;
+  }
+  .splash-appname .si { color: var(--teal-lt); }
+  .splash-appname .jaga { color: #fff; }
+  .splash-appname .jiwa { color: var(--gold); }
+  .splash-appname.dark-text .si { color: var(--teal); }
+  .splash-appname.dark-text .jaga { color: var(--navy); }
+  .splash-appname.dark-text .jiwa { color: #E65100; }
+
+  .splash-tagline {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-top: 8px; opacity: 0.7; text-align: center; z-index: 2;
+  }
+  .splash-tagline.dark-text { color: var(--navy); opacity: 0.6; }
+
+  .splash-by {
+    font-size: 9px; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; margin-top: 4px; opacity: 0.5; text-align: center; z-index: 2;
+  }
+  .splash-by.dark-text { color: var(--navy); }
+
+  .splash-loader {
+    margin-top: 40px; z-index: 2;
+    width: 60px; height: 3px; background: rgba(255,255,255,0.15);
+    border-radius: 3px; overflow: hidden;
+  }
+  .splash-loader.dark-bg-bar { background: rgba(11,45,78,0.12); }
+  .splash-loader::after {
+    content: ''; display: block; height: 100%; width: 40%;
+    background: var(--teal-lt); border-radius: 3px;
+    animation: load-bar 1.8s ease-in-out infinite;
+  }
+  .splash-loader.gold-bar::after { background: var(--gold); }
+  .splash-loader.dark-bar::after { background: var(--teal); }
+  @keyframes load-bar { 0%{transform:translateX(-150%)} 100%{transform:translateX(400%)} }
+
+  .splash-version {
+    position: absolute; bottom: 20px; left: 0; right: 0;
+    text-align: center; font-size: 9px; opacity: 0.35;
+    letter-spacing: 1px; z-index: 2;
+  }
+  .splash-version.dark-text { color: var(--navy); }
+
+  /* Decorative rings */
+  .ring {
+    position: absolute; border-radius: 50%; border: 1px solid rgba(255,255,255,0.06);
+    z-index: 1; pointer-events: none;
+  }
+  .ring-1 { width: 180px; height: 180px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .ring-2 { width: 260px; height: 260px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .ring-3 { width: 340px; height: 340px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .ring.dark-ring { border-color: rgba(11,45,78,0.1); }
+
+  .phone-label {
+    text-align: center; margin-top: 16px;
+    font-size: 12px; font-weight: 700; color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+  .phone-sublabel {
+    text-align: center; font-size: 11px; color: rgba(255,255,255,0.3);
+    margin-top: 3px;
+  }
+
+  /* ================================================================
+     PANEL 3 — BRAND GUIDELINES
+  ================================================================ */
+  .guideline-block {
+    background: rgba(255,255,255,0.04); border-radius: 16px;
+    padding: 28px; margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .guideline-title {
+    font-size: 13px; font-weight: 700; color: var(--teal-lt);
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px;
+  }
+  .dont-row { display: flex; gap: 16px; }
+  .dont-item {
+    flex: 1; padding: 20px; border-radius: 12px; text-align: center;
+  }
+  .dont-item.do { background: rgba(0,137,123,0.1); border: 1px solid rgba(0,137,123,0.2); }
+  .dont-item.dont { background: rgba(231,76,60,0.08); border: 1px solid rgba(231,76,60,0.2); }
+  .dont-badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 6px; display: inline-block; margin-bottom: 12px; letter-spacing: 1px; }
+  .dont-item.do .dont-badge { background: rgba(0,137,123,0.2); color: var(--teal-lt); }
+  .dont-item.dont .dont-badge { background: rgba(231,76,60,0.15); color: #e74c3c; }
+  .dont-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    .logo-grid { grid-template-columns: 1fr; }
+    .splash-showcase { grid-template-columns: 1fr; }
+    .phone-frame { max-width: 240px; }
+    .section { padding: 32px 20px; }
+    .tabs { padding: 0 16px; overflow-x: auto; }
+    .color-row { gap: 8px; }
+    .color-chip { min-width: 120px; }
+    .dont-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('logo')">🎨 Logo Variants</div>
+  <div class="tab" onclick="switchTab('splash')">📱 Splash Screen</div>
+  <div class="tab" onclick="switchTab('brand')">📐 Brand Guidelines</div>
+</div>
+
+<!-- ================================================================
+     PANEL 1 — LOGO
+================================================================ -->
+<div class="panel active" id="panel-logo">
+<div class="section">
+  <div class="section-label">Identitas Visual</div>
+  <div class="section-title">Logo SiJaga Jiwa</div>
+
+  <!-- LOGO GRID -->
+  <div class="logo-grid">
+
+    <!-- DARK BG -->
+    <div class="logo-card dark">
+      <span class="card-label">Primary — Dark</span>
+      <div class="logo-wrap">
+        <!-- SVG LOGO ICON -->
+        <svg class="logo-icon-svg icon-lg" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="36" cy="36" r="36" fill="url(#grad-main)"/>
+          <defs>
+            <linearGradient id="grad-main" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#00897B"/>
+              <stop offset="100%" stop-color="#004D40"/>
+            </linearGradient>
+          </defs>
+          <!-- Shield shape -->
+          <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+          <!-- Heart inside shield -->
+          <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+          <!-- Pulse line -->
+          <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+        </svg>
+        <div class="logo-text-group">
+          <div class="logo-name"><span class="si">Si</span><span class="jaga">Jaga</span> <span class="jiwa">Jiwa</span></div>
+          <div class="logo-tagline">Jaga Jiwa, Jaga Keluarga</div>
+          <div class="logo-by">by Puskesmas Blega</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHITE BG -->
+    <div class="logo-card light">
+      <span class="card-label" style="color:#aaa;">On White</span>
+      <div class="logo-wrap">
+        <svg class="logo-icon-svg icon-lg" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="36" fill="url(#grad-light)"/>
+          <defs>
+            <linearGradient id="grad-light" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0B2D4E"/>
+              <stop offset="100%" stop-color="#1565C0"/>
+            </linearGradient>
+          </defs>
+          <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+          <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+          <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+        </svg>
+        <div class="logo-text-group">
+          <div class="logo-name on-light"><span class="si">Si</span><span class="jaga">Jaga</span> <span class="jiwa">Jiwa</span></div>
+          <div class="logo-tagline on-light" style="color:#0B2D4E;">Jaga Jiwa, Jaga Keluarga</div>
+          <div class="logo-by" style="color:#0B2D4E;">by Puskesmas Blega</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRADIENT DARK -->
+    <div class="logo-card gradient">
+      <span class="card-label">Gradient — Vertical</span>
+      <div class="logo-wrap vertical">
+        <svg class="logo-icon-svg icon-lg" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="36" fill="rgba(255,255,255,0.15)"/>
+          <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+          <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+          <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="logo-text-group" style="align-items:center;">
+          <div class="logo-name" style="font-size:24px;"><span class="si">Si</span><span class="jaga">Jaga</span> <span class="jiwa">Jiwa</span></div>
+          <div class="logo-tagline" style="text-align:center;">Jaga Jiwa, Jaga Keluarga</div>
+          <div class="logo-by" style="text-align:center;">by Puskesmas Blega</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPACT / ICON ONLY -->
+    <div class="logo-card teal-bg">
+      <span class="card-label">Compact — Icon + Name</span>
+      <div style="display:flex;flex-direction:column;gap:28px;align-items:center;width:100%;">
+        <!-- Compact horizontal -->
+        <div class="logo-wrap" style="gap:12px;">
+          <svg class="logo-icon-svg icon-sm" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="36" fill="rgba(255,255,255,0.2)"/>
+            <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+            <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+            <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="logo-name" style="font-size:20px;"><span style="color:rgba(255,255,255,0.7)">Si</span><span>Jaga</span> <span class="jiwa">Jiwa</span></div>
+        </div>
+        <!-- App icon style -->
+        <div style="width:80px;height:80px;border-radius:22px;background:linear-gradient(145deg,#0B2D4E,#00695C);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+          <svg width="50" height="50" viewBox="0 0 72 72" fill="none">
+            <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+            <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+            <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.6);font-weight:600;letter-spacing:1px;">APP ICON (80×80)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ICON SIZES -->
+  <div class="section-label" style="margin-top:8px;">Icon Sizes</div>
+  <div class="icon-grid">
+    <div class="icon-item">
+      <div class="chip c-navy">
+        <svg width="64" height="64" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="36" fill="url(#g2)"/>
+          <defs><linearGradient id="g2" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#00897B"/><stop offset="100%" stop-color="#004D40"/></linearGradient></defs>
+          <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+          <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+          <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span>64px</span>
+    </div>
+    <div class="icon-item">
+      <div class="chip c-white">
+        <svg width="48" height="48" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="36" fill="#0B2D4E"/>
+          <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+          <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+          <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span>48px</span>
+    </div>
+    <div class="icon-item">
+      <div class="chip c-teal">
+        <svg width="36" height="36" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="36" fill="rgba(255,255,255,0.2)"/>
+          <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+          <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+          <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span>36px</span>
+    </div>
+    <div class="icon-item">
+      <div class="chip c-gold">
+        <svg width="24" height="24" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="36" fill="#0B2D4E"/>
+          <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+          <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="white"/>
+          <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="#F9A825" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span>24px</span>
+    </div>
+  </div>
+
+  <!-- COLOR PALETTE -->
+  <div class="section-label">Brand Colors</div>
+  <div class="color-row">
+    <div class="color-chip" style="background:#0B2D4E;">
+      <div class="color-name">Navy Primary</div>
+      <div class="color-hex">#0B2D4E</div>
+      <div class="color-use">Background, Text</div>
+    </div>
+    <div class="color-chip" style="background:#00897B;">
+      <div class="color-name">Teal Health</div>
+      <div class="color-hex">#00897B</div>
+      <div class="color-use">Aksen Utama</div>
+    </div>
+    <div class="color-chip" style="background:#26A69A;">
+      <div class="color-name">Teal Light</div>
+      <div class="color-hex">#26A69A</div>
+      <div class="color-use">Highlight, "Si"</div>
+    </div>
+    <div class="color-chip" style="background:#F9A825;color:#0B2D4E;">
+      <div class="color-name" style="color:#0B2D4E;">Gold Accent</div>
+      <div class="color-hex" style="color:#0B2D4E;">#F9A825</div>
+      <div class="color-use" style="color:#0B2D4E;">CTA, "Jiwa"</div>
+    </div>
+    <div class="color-chip" style="background:#F4F8FB;color:#0B2D4E;border:1px solid #ddd;">
+      <div class="color-name" style="color:#0B2D4E;">Off White</div>
+      <div class="color-hex" style="color:#0B2D4E;">#F4F8FB</div>
+      <div class="color-use" style="color:#0B2D4E;">Background</div>
+    </div>
+  </div>
+
+  <!-- TYPOGRAPHY -->
+  <div class="section-label" style="margin-top:32px;">Typography</div>
+  <div style="background:rgba(255,255,255,0.04);border-radius:16px;padding:28px;border:1px solid rgba(255,255,255,0.06);">
+    <div class="type-row">
+      <div class="type-sample" style="font-size:40px;font-weight:900;line-height:1;">SiJaga Jiwa</div>
+      <div class="type-meta">Playfair Display 900 — App Name / Hero Title</div>
+    </div>
+    <div class="type-row">
+      <div class="type-sample" style="font-size:24px;font-weight:700;">Pemantauan Jiwa Terintegrasi</div>
+      <div class="type-meta">Playfair Display 700 — Section Headers</div>
+    </div>
+    <div class="type-row">
+      <div style="font-size:16px;font-weight:600;font-family:'Outfit',sans-serif;">Jaga Jiwa, Jaga Keluarga</div>
+      <div class="type-meta">Outfit 600 — Tagline / Subheading</div>
+    </div>
+    <div class="type-row" style="border:none;margin:0;padding:0;">
+      <div style="font-size:14px;font-weight:400;font-family:'Outfit',sans-serif;color:var(--muted);">Layanan kesehatan jiwa digital 24 jam oleh Puskesmas Blega</div>
+      <div class="type-meta">Outfit 400 — Body Text / Descriptions</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ================================================================
+     PANEL 2 — SPLASH SCREENS
+================================================================ -->
+<div class="panel" id="panel-splash">
+<div class="section">
+  <div class="section-label">Mobile App</div>
+  <div class="section-title">Splash Screen Variants</div>
+
+  <div class="splash-showcase">
+
+    <!-- PHONE 1 — DARK NAVY -->
+    <div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="splash-a">
+            <div class="ring ring-1"></div>
+            <div class="ring ring-2"></div>
+            <div class="ring ring-3"></div>
+            <div class="splash-logo-wrap">
+              <svg width="80" height="80" viewBox="0 0 72 72" fill="none">
+                <circle cx="36" cy="36" r="36" fill="url(#g-splash-a)"/>
+                <defs><linearGradient id="g-splash-a" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#00897B"/><stop offset="100%" stop-color="#004D40"/></linearGradient></defs>
+                <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+                <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+                <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div class="splash-appname"><span class="si">Si</span><span class="jaga">Jaga</span> <span class="jiwa">Jiwa</span></div>
+              <div class="splash-tagline">Jaga Jiwa, Jaga Keluarga</div>
+              <div class="splash-by">by Puskesmas Blega</div>
+            </div>
+            <div class="splash-loader"></div>
+            <div class="splash-version">v1.0.0</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">🌙 Dark Navy</div>
+      <div class="phone-sublabel">Rekomendasi Utama</div>
+    </div>
+
+    <!-- PHONE 2 — TEAL GREEN -->
+    <div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="splash-b">
+            <div class="ring ring-1" style="border-color:rgba(255,255,255,0.07)"></div>
+            <div class="ring ring-2" style="border-color:rgba(255,255,255,0.05)"></div>
+            <div class="splash-logo-wrap">
+              <svg width="80" height="80" viewBox="0 0 72 72" fill="none">
+                <circle cx="36" cy="36" r="36" fill="rgba(255,255,255,0.15)"/>
+                <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+                <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+                <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div class="splash-appname"><span class="si">Si</span><span class="jaga">Jaga</span> <span class="jiwa">Jiwa</span></div>
+              <div class="splash-tagline">Jaga Jiwa, Jaga Keluarga</div>
+              <div class="splash-by">by Puskesmas Blega</div>
+            </div>
+            <div class="splash-loader gold-bar"></div>
+            <div class="splash-version">v1.0.0</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">🌿 Teal Forest</div>
+      <div class="phone-sublabel">Alternatif Hijau</div>
+    </div>
+
+    <!-- PHONE 3 — WHITE CLEAN -->
+    <div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="splash-c">
+            <div class="ring ring-1 dark-ring"></div>
+            <div class="ring ring-2 dark-ring"></div>
+            <div class="splash-logo-wrap">
+              <svg width="80" height="80" viewBox="0 0 72 72" fill="none">
+                <circle cx="36" cy="36" r="36" fill="url(#g-splash-c)"/>
+                <defs><linearGradient id="g-splash-c" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0B2D4E"/><stop offset="100%" stop-color="#00897B"/></linearGradient></defs>
+                <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+                <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+                <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div class="splash-appname dark-text"><span class="si">Si</span><span class="jaga">Jaga</span> <span class="jiwa">Jiwa</span></div>
+              <div class="splash-tagline dark-text">Jaga Jiwa, Jaga Keluarga</div>
+              <div class="splash-by dark-text">by Puskesmas Blega</div>
+            </div>
+            <div class="splash-loader dark-bg-bar dark-bar"></div>
+            <div class="splash-version dark-text">v1.0.0</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">☀️ White Clean</div>
+      <div class="phone-sublabel">Alternatif Terang</div>
+    </div>
+
+  </div><!-- end splash-showcase -->
+
+  <!-- RECOMMENDATION -->
+  <div style="background:rgba(0,137,123,0.1);border:1px solid rgba(0,137,123,0.25);border-radius:16px;padding:24px;margin-top:32px;display:flex;gap:16px;align-items:flex-start;">
+    <div style="font-size:32px;">🏆</div>
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--teal-lt);margin-bottom:6px;">Rekomendasi: Dark Navy Splash</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;">Varian <strong style="color:#fff;">Dark Navy</strong> dipilih sebagai utama karena memberikan kesan <strong style="color:#fff;">profesional, medis, dan terpercaya</strong> — cocok untuk aplikasi kesehatan pemerintah. Kontras tinggi antara navy, teal, dan gold menciptakan hierarki visual yang kuat dan mudah dibaca di semua layar.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================
+     PANEL 3 — BRAND GUIDELINES
+================================================================ -->
+<div class="panel" id="panel-brand">
+<div class="section">
+  <div class="section-label">Panduan Identitas</div>
+  <div class="section-title">Brand Guidelines</div>
+
+  <!-- Logo Usage -->
+  <div class="guideline-block">
+    <div class="guideline-title">✅ Penggunaan Logo yang Benar</div>
+    <div class="dont-row">
+      <div class="dont-item do">
+        <span class="dont-badge">✓ BOLEH</span>
+        <div class="dont-text">Gunakan logo di atas background navy, teal, atau putih — warna yang sudah ditetapkan dalam brand palette</div>
+      </div>
+      <div class="dont-item do">
+        <span class="dont-badge">✓ BOLEH</span>
+        <div class="dont-text">Pertahankan area kosong minimal 1x tinggi icon di sekeliling logo agar tidak terlalu berdempetan</div>
+      </div>
+      <div class="dont-item dont">
+        <span class="dont-badge">✗ JANGAN</span>
+        <div class="dont-text">Jangan ubah warna logo atau gunakan di atas background warna acak yang tidak ada di brand palette</div>
+      </div>
+      <div class="dont-item dont">
+        <span class="dont-badge">✗ JANGAN</span>
+        <div class="dont-text">Jangan stretch, rotate, atau distorsi logo dalam bentuk apapun</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tagline -->
+  <div class="guideline-block">
+    <div class="guideline-title">💬 Tagline Resmi</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="background:rgba(255,255,255,0.06);border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;">"Jaga Jiwa, Jaga Keluarga"</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Tagline Publik — untuk poster, banner, sosmed</div>
+        </div>
+        <span style="background:rgba(0,137,123,0.2);color:var(--teal-lt);font-size:11px;font-weight:700;padding:4px 12px;border-radius:8px;">UTAMA</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:16px;font-weight:600;">"Sistem Monitoring Kesehatan Jiwa Terintegrasi"</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Tagline Formal — untuk proposal, dokumen resmi Dinkes</div>
+        </div>
+        <span style="background:rgba(255,255,255,0.08);color:var(--muted);font-size:11px;font-weight:700;padding:4px 12px;border-radius:8px;">FORMAL</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tone of Voice -->
+  <div class="guideline-block">
+    <div class="guideline-title">🗣️ Tone of Voice</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+      <div style="padding:16px;background:rgba(255,255,255,0.04);border-radius:12px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">🤝</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;">Hangat</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;">Bahasa ramah, peduli, tidak menggurui</div>
+      </div>
+      <div style="padding:16px;background:rgba(255,255,255,0.04);border-radius:12px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">🏥</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;">Profesional</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;">Informasi akurat, terstruktur, terpercaya</div>
+      </div>
+      <div style="padding:16px;background:rgba(255,255,255,0.04);border-radius:12px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">💪</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;">Memberdayakan</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;">Mendorong kemandirian pasien & keluarga</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Platform -->
+  <div class="guideline-block">
+    <div class="guideline-title">📲 Penggunaan di Platform</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:rgba(255,255,255,0.04);border-radius:10px;">
+        <span style="font-size:20px;">📱</span>
+        <div style="flex:1"><div style="font-size:13px;font-weight:700;">Play Store / App Store</div><div style="font-size:11px;color:var(--muted);">SiJaga Jiwa — Kesehatan Jiwa Blega</div></div>
+        <span style="font-size:11px;color:var(--teal-lt);font-weight:700;">App Name</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:rgba(255,255,255,0.04);border-radius:10px;">
+        <span style="font-size:20px;">🌐</span>
+        <div style="flex:1"><div style="font-size:13px;font-weight:700;">Website</div><div style="font-size:11px;color:var(--muted);">sijagajiwa.blega.id</div></div>
+        <span style="font-size:11px;color:var(--teal-lt);font-weight:700;">Domain</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:rgba(255,255,255,0.04);border-radius:10px;">
+        <span style="font-size:20px;">📸</span>
+        <div style="flex:1"><div style="font-size:13px;font-weight:700;">Instagram / Facebook</div><div style="font-size:11px;color:var(--muted);">@sijagajiwa.blega</div></div>
+        <span style="font-size:11px;color:var(--teal-lt);font-weight:700;">Handle</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:rgba(255,255,255,0.04);border-radius:10px;">
+        <span style="font-size:20px;">📄</span>
+        <div style="flex:1"><div style="font-size:13px;font-weight:700;">Dokumen Resmi</div><div style="font-size:11px;color:var(--muted);">Aplikasi SiJaga Jiwa — Puskesmas Blega, Kab. Bangkalan</div></div>
+        <span style="font-size:11px;color:var(--teal-lt);font-weight:700;">Formal</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f4c81">
+<meta name="description" content="SIODGJ - Sistem Informasi ODGJ Terintegrasi">
+<title>SIODGJ - Sistem Informasi ODGJ</title>
+<link rel="manifest" href="#" id="manifest-link">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #0f4c81;
+    --primary-light: #1a6db5;
+    --accent: #00b4d8;
+    --accent2: #f77f00;
+    --success: #2ec4b6;
+    --danger: #e63946;
+    --warning: #f4a261;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1a2332;
+    --text-muted: #6b7a8d;
+    --border: #dde4ed;
+    --sidebar-w: 260px;
+    --header-h: 64px;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(15,76,129,0.10);
+    --shadow-lg: 0 8px 40px rgba(15,76,129,0.16);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== SPLASH / ONBOARDING ===== */
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #0f4c81 0%, #00b4d8 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  #splash.hide { opacity: 0; transform: scale(1.05); pointer-events: none; }
+  .splash-logo { font-family: 'DM Serif Display', serif; font-size: 48px; color: #fff; letter-spacing: -1px; }
+  .splash-sub { color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 8px; font-weight: 500; }
+  .splash-pulse { width: 80px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 4px; margin-top: 40px; overflow: hidden; }
+  .splash-pulse::after {
+    content: ''; display: block; height: 100%; width: 40%;
+    background: #fff; border-radius: 4px;
+    animation: pulse-bar 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-bar { 0%{transform:translateX(-100%)} 100%{transform:translateX(350%)} }
+
+  /* ===== WALKTHROUGH ===== */
+  #walkthrough {
+    position: fixed; inset: 0; z-index: 9998;
+    background: rgba(15,76,129,0.92); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    transition: opacity 0.4s;
+  }
+  #walkthrough.hide { display: none; }
+  .wt-card {
+    background: #fff; border-radius: 24px; max-width: 480px; width: 100%;
+    padding: 40px 36px 32px; text-align: center;
+    animation: wt-in 0.4s ease;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+  }
+  @keyframes wt-in { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .wt-icon { font-size: 56px; margin-bottom: 16px; display: block; }
+  .wt-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--primary); margin-bottom: 12px; }
+  .wt-desc { color: var(--text-muted); line-height: 1.7; font-size: 15px; }
+  .wt-dots { display: flex; gap: 8px; justify-content: center; margin: 24px 0; }
+  .wt-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--border); transition: all 0.3s; }
+  .wt-dot.active { background: var(--primary); width: 24px; }
+  .wt-actions { display: flex; gap: 12px; justify-content: center; }
+  .btn { padding: 12px 28px; border-radius: 12px; border: none; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; transition: all 0.2s; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(15,76,129,0.3); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); }
+  .btn-accent { background: var(--accent2); color: #fff; }
+  .btn-accent:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* ===== ROLE SELECT ===== */
+  #role-select {
+    position: fixed; inset: 0; z-index: 9997;
+    background: linear-gradient(135deg, #0f4c81 0%, #1a6db5 100%);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  #role-select.hide { display: none; }
+  .role-card { background: #fff; border-radius: 24px; max-width: 520px; width: 100%; padding: 40px 32px; }
+  .role-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--primary); margin-bottom: 8px; }
+  .role-sub { color: var(--text-muted); margin-bottom: 28px; font-size: 14px; }
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .role-btn {
+    border: 2px solid var(--border); border-radius: 16px; padding: 20px 16px;
+    cursor: pointer; background: #fff; text-align: center; transition: all 0.2s;
+    font-family: inherit;
+  }
+  .role-btn:hover, .role-btn.selected { border-color: var(--primary); background: #f0f4f8; }
+  .role-btn .role-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+  .role-btn .role-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .role-btn .role-desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ===== LAYOUT ===== */
+  #app { display: none; min-height: 100vh; }
+  #app.show { display: flex; }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: var(--sidebar-w); min-height: 100vh;
+    background: var(--primary);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    transition: transform 0.3s ease;
+  }
+  .sidebar-logo {
+    padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-family: 'DM Serif Display', serif; font-size: 22px; color: #fff;
+  }
+  .sidebar-logo span { display: block; font-size: 11px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 400; color: rgba(255,255,255,0.6); margin-top: 2px; }
+  .sidebar-user {
+    padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .user-info .name { font-size: 13px; font-weight: 700; color: #fff; }
+  .user-info .role-tag { font-size: 11px; color: rgba(255,255,255,0.6); }
+  .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+  .nav-section { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4); letter-spacing: 1.5px; text-transform: uppercase; padding: 12px 8px 6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 12px; border-radius: 12px; cursor: pointer;
+    color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500;
+    transition: all 0.2s; margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.2); color: #fff; font-weight: 600; }
+  .nav-item .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+
+  /* ===== MAIN CONTENT ===== */
+  .main-content { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; }
+  .topbar {
+    height: var(--header-h); background: #fff;
+    display: flex; align-items: center; padding: 0 28px; gap: 16px;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .topbar-title { font-size: 18px; font-weight: 700; color: var(--text); flex: 1; }
+  .topbar-actions { display: flex; align-items: center; gap: 12px; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 10px; background: var(--bg); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; position: relative; }
+  .icon-btn:hover { background: var(--border); }
+  .badge-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: var(--danger); border-radius: 50%; border: 2px solid #fff; }
+  .hamburger { display: none; }
+
+  .page-content { padding: 28px; }
+
+  /* ===== STATS GRID ===== */
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--card); border-radius: var(--radius); padding: 20px 20px 16px;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .stat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 32px; font-weight: 800; color: var(--text); margin: 8px 0 4px; line-height: 1; }
+  .stat-change { font-size: 12px; color: var(--success); font-weight: 600; }
+  .stat-icon { font-size: 28px; float: right; margin-top: -40px; opacity: 0.8; }
+
+  /* ===== SECTION CARDS ===== */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .section-action { font-size: 13px; color: var(--primary); font-weight: 600; cursor: pointer; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+
+  /* ===== PATIENT TABLE ===== */
+  .patient-list { display: flex; flex-direction: column; gap: 10px; }
+  .patient-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; background: var(--bg); border-radius: 12px;
+    cursor: pointer; transition: all 0.2s; border: 1.5px solid transparent;
+  }
+  .patient-item:hover { background: #e8f0f8; border-color: var(--primary); }
+  .p-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+  .p-info { flex: 1; }
+  .p-name { font-size: 14px; font-weight: 700; }
+  .p-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .p-status { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px; }
+  .status-stable { background: #d1fae5; color: #065f46; }
+  .status-monitor { background: #fef3c7; color: #92400e; }
+  .status-critical { background: #fee2e2; color: #991b1b; }
+
+  /* ===== PMO TABLE ===== */
+  .pmo-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .pmo-item:last-child { border: none; }
+  .pmo-time { font-size: 12px; font-weight: 700; color: var(--primary); background: #e0eef8; padding: 4px 10px; border-radius: 8px; white-space: nowrap; }
+  .pmo-drug { flex: 1; font-size: 13px; font-weight: 600; }
+  .pmo-patient { font-size: 11px; color: var(--text-muted); }
+  .check-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.2s; }
+  .check-btn.checked { background: var(--success); border-color: var(--success); color: #fff; }
+  .check-btn:hover { border-color: var(--success); }
+
+  /* ===== CHAT ===== */
+  .chat-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 300px; overflow-y: auto; }
+  .chat-msg { display: flex; gap: 10px; align-items: flex-end; }
+  .chat-msg.mine { flex-direction: row-reverse; }
+  .chat-bubble { max-width: 72%; padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.5; }
+  .chat-msg:not(.mine) .chat-bubble { background: var(--bg); border-bottom-left-radius: 4px; }
+  .chat-msg.mine .chat-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+  .chat-time { font-size: 10px; color: var(--text-muted); }
+  .chat-input-area { display: flex; gap: 10px; }
+  .chat-input { flex: 1; border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 14px; font-family: inherit; font-size: 13px; outline: none; }
+  .chat-input:focus { border-color: var(--primary); }
+  .send-btn { background: var(--primary); color: #fff; border: none; border-radius: 12px; width: 42px; cursor: pointer; font-size: 18px; transition: all 0.2s; }
+  .send-btn:hover { background: var(--primary-light); }
+
+  /* ===== NOTIFICATION ===== */
+  .notif-item { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 12px; margin-bottom: 8px; border: 1.5px solid transparent; cursor: pointer; transition: all 0.2s; }
+  .notif-item:hover { background: var(--bg); }
+  .notif-item.unread { background: #f0f7ff; border-color: #d0e4f7; }
+  .notif-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .notif-icon.blue { background: #dbeafe; }
+  .notif-icon.orange { background: #fef3c7; }
+  .notif-icon.red { background: #fee2e2; }
+  .notif-icon.green { background: #d1fae5; }
+  .notif-text { flex: 1; }
+  .notif-title { font-size: 13px; font-weight: 700; }
+  .notif-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+  .notif-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ===== FORMS ===== */
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; font-family: inherit; font-size: 14px; outline: none;
+    background: #fff; transition: border-color 0.2s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ===== REAL TIME INDICATOR ===== */
+  .realtime-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 6px; animation: blink 1.5s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ===== ALERT STOCK ===== */
+  .stock-alert { background: linear-gradient(135deg, #f77f00, #fcbf49); border-radius: 14px; padding: 16px 20px; color: #fff; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .stock-alert .alert-icon { font-size: 28px; }
+  .stock-alert .alert-text { flex: 1; }
+  .stock-alert .alert-title { font-size: 14px; font-weight: 700; }
+  .stock-alert .alert-sub { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+  .stock-alert .alert-action { background: rgba(255,255,255,0.25); border: none; border-radius: 8px; padding: 7px 14px; color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .stock-alert .alert-action:hover { background: rgba(255,255,255,0.4); }
+
+  /* ===== SCHEDULE ===== */
+  .schedule-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .day-cell { border-radius: 8px; padding: 10px 6px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .day-cell:hover { background: var(--bg); }
+  .day-cell.today { background: var(--primary); color: #fff; }
+  .day-cell .day-name { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+  .day-cell.today .day-name { color: rgba(255,255,255,0.7); }
+  .day-cell .day-num { font-size: 16px; font-weight: 700; margin-top: 4px; }
+  .day-cell .day-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin: 4px auto 0; }
+
+  /* ===== PICKUP SCHEDULE ===== */
+  .pickup-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg); border-radius: 12px; margin-bottom: 8px; }
+  .pickup-icon { font-size: 22px; }
+  .pickup-info { flex: 1; }
+  .pickup-name { font-size: 13px; font-weight: 700; }
+  .pickup-addr { font-size: 11px; color: var(--text-muted); }
+  .pickup-time { font-size: 12px; font-weight: 700; color: var(--primary); }
+  .pickup-status-chip { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+  .chip-scheduled { background: #dbeafe; color: var(--primary); }
+  .chip-done { background: #d1fae5; color: #065f46; }
+
+  /* ===== PROGRESS BAR ===== */
+  .progress-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; transition: width 0.8s ease; }
+
+  /* ===== CHART (Pure CSS) ===== */
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 0 4px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .bar-fill { width: 100%; background: linear-gradient(180deg, var(--accent) 0%, var(--primary) 100%); border-radius: 6px 6px 0 0; transition: height 0.8s ease; min-height: 4px; }
+  .bar-label { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+
+  /* ===== MOBILE ===== */
+  .mobile-nav {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: #fff; border-top: 1px solid var(--border);
+    padding: 8px 0 env(safe-area-inset-bottom, 8px);
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  }
+  .mobile-nav-inner { display: flex; justify-content: space-around; }
+  .mobile-nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 12px; cursor: pointer; border-radius: 12px; transition: all 0.2s; min-width: 60px; }
+  .mobile-nav-item.active .m-icon { color: var(--primary); }
+  .mobile-nav-item.active .m-label { color: var(--primary); font-weight: 700; }
+  .m-icon { font-size: 22px; color: var(--text-muted); }
+  .m-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+
+  /* ===== MODAL ===== */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: 20px; max-width: 560px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.2); }
+  .modal-header { padding: 24px 24px 0; display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 18px; font-weight: 700; }
+  .modal-close { background: var(--bg); border: none; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .modal-body { padding: 20px 24px 24px; }
+
+  /* ===== TOAST ===== */
+  #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9000; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: var(--text); color: #fff; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; animation: toast-in 0.3s ease; min-width: 200px; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+  .toast.success { background: var(--success); }
+  .toast.warning { background: var(--warning); }
+  .toast.error { background: var(--danger); }
+  @keyframes toast-in { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+  @media (max-width: 768px) {
+    :root { --sidebar-w: 0px; }
+    .sidebar { transform: translateX(-260px); width: 260px; }
+    .sidebar.open { transform: translateX(0); }
+    .hamburger { display: flex; }
+    .main-content { margin-left: 0; padding-bottom: 72px; }
+    .mobile-nav { display: block; }
+    .stats-grid { grid-template-columns: repeat(2,1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .page-content { padding: 16px; }
+    .topbar { padding: 0 16px; }
+    .role-grid { grid-template-columns: 1fr 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 400px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ===== PAGES ===== */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Sidebar overlay for mobile */
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
+  .sidebar-overlay.show { display: block; }
+
+  /* Color strips on stat cards */
+  .stat-card { border-top: 3px solid transparent; }
+  .stat-card.blue { border-top-color: var(--primary); }
+  .stat-card.cyan { border-top-color: var(--accent); }
+  .stat-card.orange { border-top-color: var(--accent2); }
+  .stat-card.green { border-top-color: var(--success); }
+
+  /* report page */
+  .report-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .report-row:last-child { border: none; }
+  .report-label { font-size: 14px; font-weight: 600; }
+  .report-val { font-size: 14px; font-weight: 700; color: var(--primary); }
+
+  /* realtime banner */
+  .rt-banner { background: linear-gradient(135deg, var(--success) 0%, #0ab3a8 100%); border-radius: 14px; padding: 14px 20px; color: #fff; display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .rt-banner .rt-txt { flex: 1; font-size: 13px; font-weight: 600; }
+  .rt-banner .rt-time { font-size: 18px; font-weight: 800; }
+
+  /* inline detail page */
+  .detail-hero { background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: var(--radius); padding: 28px; color: #fff; text-align: center; margin-bottom: 20px; }
+  .detail-hero .dh-avatar { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; margin: 0 auto 12px; }
+  .detail-hero .dh-name { font-size: 20px; font-weight: 700; }
+  .detail-hero .dh-meta { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+
+  .back-btn { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--primary); font-weight: 700; font-size: 14px; margin-bottom: 16px; }
+  .back-btn:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">SIODGJ</div>
+  <div class="splash-sub">Sistem Informasi ODGJ Terintegrasi</div>
+  <div class="splash-pulse"></div>
+</div>
+
+<!-- WALKTHROUGH -->
+<div id="walkthrough">
+  <div class="wt-card" id="wt-card">
+    <span class="wt-icon" id="wt-icon">🏥</span>
+    <div class="wt-title" id="wt-title">Selamat Datang di SIODGJ</div>
+    <div class="wt-desc" id="wt-desc">Sistem terintegrasi untuk pencatatan, pelaporan, dan pemantauan data Orang Dengan Gangguan Jiwa secara real-time.</div>
+    <div class="wt-dots" id="wt-dots"></div>
+    <div class="wt-actions">
+      <button class="btn btn-ghost" id="wt-skip" onclick="skipWalkthrough()">Lewati</button>
+      <button class="btn btn-primary" id="wt-next" onclick="nextWalkthrough()">Selanjutnya →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROLE SELECT -->
+<div id="role-select">
+  <div class="role-card">
+    <div class="role-title">Masuk sebagai</div>
+    <div class="role-sub">Pilih peran Anda untuk melanjutkan</div>
+    <div class="role-grid">
+      <div class="role-btn" onclick="selectRole('pasien','Pasien','👤')">
+        <span class="role-icon">👤</span>
+        <div class="role-name">Pasien</div>
+        <div class="role-desc">Pantau kondisi & obat</div>
+      </div>
+      <div class="role-btn" onclick="selectRole('pendamping','Pendamping','👨‍👩‍👧')">
+        <span class="role-icon">👨‍👩‍👧</span>
+        <div class="role-name">Pendamping</div>
+        <div class="role-desc">Kelola jadwal & ambil obat</div>
+      </div>
+      <div class="role-btn" onclick="selectRole('petugas','Petugas Kesehatan','🏥')">
+        <span class="role-icon">🏥</span>
+        <div class="role-name">Petugas Kesehatan</div>
+        <div class="role-desc">Monitoring & pelaporan</div>
+      </div>
+      <div class="role-btn" onclick="selectRole('dokter','Dokter','👨‍⚕️')">
+        <span class="role-icon">👨‍⚕️</span>
+        <div class="role-name">Dokter</div>
+        <div class="role-desc">Resep & konsultasi</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <div class="role-btn" style="display:flex;align-items:center;gap:12px;text-align:left;" onclick="selectRole('pemegang','Pemegang Program Jiwa','📊')">
+        <span class="role-icon" style="margin-bottom:0">📊</span>
+        <div>
+          <div class="role-name">Pemegang Program Jiwa</div>
+          <div class="role-desc">Laporan & statistik program</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">SIODGJ<span>Sistem Informasi ODGJ</span></div>
+    <div class="sidebar-user">
+      <div class="avatar" id="user-avatar">👨‍⚕️</div>
+      <div class="user-info">
+        <div class="name" id="user-name">Dr. Ahmad Fauzi</div>
+        <div class="role-tag" id="user-role">Dokter</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="topbar">
+      <button class="icon-btn hamburger" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <span style="font-size:11px;color:var(--text-muted);"><span class="realtime-dot"></span>Live</span>
+        <button class="icon-btn" onclick="showPage('notifikasi')">
+          🔔<span class="badge-dot"></span>
+        </button>
+        <button class="icon-btn" onclick="showPage('chat')">💬</button>
+        <button class="icon-btn" onclick="showPage('profil')">⚙️</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="rt-banner">
+          <div>🟢</div>
+          <div class="rt-txt">Data kondisi pasien ODGJ terpantau <strong>real-time</strong> — Semua data diperbarui otomatis</div>
+          <div class="rt-time" id="live-time">--:--</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card blue" onclick="showPage('data-pasien')">
+            <div class="stat-label">Total Pasien</div>
+            <div class="stat-value">247</div>
+            <div class="stat-change">↑ 5 bulan ini</div>
+            <div class="stat-icon">👥</div>
+          </div>
+          <div class="stat-card cyan" onclick="showPage('pmo')">
+            <div class="stat-label">PMO Hari Ini</div>
+            <div class="stat-value">38</div>
+            <div class="stat-change">✓ 12 sudah minum</div>
+            <div class="stat-icon">💊</div>
+          </div>
+          <div class="stat-card orange" onclick="showPage('stok-obat')">
+            <div class="stat-label">Stok Kritis</div>
+            <div class="stat-value">4</div>
+            <div class="stat-change">⚠ Perlu restock</div>
+            <div class="stat-icon">📦</div>
+          </div>
+          <div class="stat-card green" onclick="showPage('jadwal-ambil')">
+            <div class="stat-label">Penjemputan</div>
+            <div class="stat-value">9</div>
+            <div class="stat-change">↗ Terjadwal hari ini</div>
+            <div class="stat-icon">🚗</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title">Pasien Perlu Perhatian</div>
+              <div class="section-action" onclick="showPage('data-pasien')">Lihat semua →</div>
+            </div>
+            <div class="patient-list" id="dashboard-patients"></div>
+          </div>
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title">PMO Hari Ini</div>
+              <div class="section-action" onclick="showPage('pmo')">Semua →</div>
+            </div>
+            <div id="dashboard-pmo"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title">📊 Tren Kunjungan (7 Hari)</div>
+            </div>
+            <div class="bar-chart" id="bar-chart"></div>
+            <div style="display:flex;justify-content:space-between;padding:0 4px;margin-top:6px;">
+              <span id="chart-labels" style="display:flex;justify-content:space-between;width:100%;font-size:10px;color:var(--text-muted);font-weight:600;"></span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title">⚠️ Alert Stok Obat</div>
+              <div class="section-action" onclick="showPage('stok-obat')">Kelola →</div>
+            </div>
+            <div id="stock-alerts"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATA PASIEN -->
+      <div class="page" id="page-data-pasien">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="font-size:20px;">Data Pasien ODGJ</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;"><span class="realtime-dot"></span>Terpantau real-time</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modal-tambah-pasien')">+ Tambah Pasien</button>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <input type="text" class="form-input" placeholder="🔍  Cari nama pasien, NIK..." oninput="filterPatients(this.value)" style="margin-bottom:0;">
+        </div>
+        <div class="card">
+          <div class="patient-list" id="full-patient-list"></div>
+        </div>
+      </div>
+
+      <!-- PATIENT DETAIL -->
+      <div class="page" id="page-patient-detail">
+        <div class="back-btn" onclick="showPage('data-pasien')">← Kembali ke Daftar Pasien</div>
+        <div class="detail-hero">
+          <div class="dh-avatar" id="detail-avatar">JD</div>
+          <div class="dh-name" id="detail-name">John Doe</div>
+          <div class="dh-meta" id="detail-meta">L, 35th • Skizofrenia</div>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <div class="section-title" style="margin-bottom:12px;">📋 Info Dasar</div>
+            <div id="detail-info"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:12px;">💊 Obat Saat Ini</div>
+            <div id="detail-drugs"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:12px;">📈 Status PMO</div>
+            <div id="detail-pmo-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PMO -->
+      <div class="page" id="page-pmo">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="font-size:20px;">Pemantauan Minum Obat</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Dapat diakses 24 jam oleh dokter & petugas</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modal-pmo')">+ Catat PMO</button>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title" style="margin-bottom:12px;">Jadwal Minum Obat Hari Ini</div>
+            <div id="pmo-full-list"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Kepatuhan Mingguan</div>
+            <div id="pmo-compliance"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHAT -->
+      <div class="page" id="page-chat">
+        <div class="section-title" style="font-size:20px;margin-bottom:20px;">💬 Chat Langsung dengan Dokter</div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title">Percakapan</div>
+              <span style="font-size:11px;color:var(--success);font-weight:600;"><span class="realtime-dot"></span>Online</span>
+            </div>
+            <div id="contact-list"></div>
+          </div>
+          <div class="card" style="display:flex;flex-direction:column;">
+            <div class="section-header" style="padding-bottom:12px;border-bottom:1px solid var(--border);">
+              <div>
+                <div class="section-title" id="chat-with">Dr. Ahmad Fauzi</div>
+                <div style="font-size:11px;color:var(--success);font-weight:600;"><span class="realtime-dot"></span>Online sekarang</div>
+              </div>
+            </div>
+            <div class="chat-list" id="chat-messages" style="margin-top:16px;flex:1;"></div>
+            <div class="chat-input-area">
+              <input class="chat-input" id="chat-input" placeholder="Tulis pesan..." onkeypress="chatEnter(event)">
+              <button class="send-btn" onclick="sendChat()">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NOTIFIKASI -->
+      <div class="page" id="page-notifikasi">
+        <div class="section-title" style="font-size:20px;margin-bottom:20px;">🔔 Notifikasi</div>
+        <div class="card">
+          <div id="notif-list"></div>
+        </div>
+      </div>
+
+      <!-- STOK OBAT -->
+      <div class="page" id="page-stok-obat">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div class="section-title" style="font-size:20px;">📦 Manajemen Stok Obat</div>
+          <button class="btn btn-primary" onclick="openModal('modal-stok')">+ Tambah Stok</button>
+        </div>
+        <div id="stock-alert-banner"></div>
+        <div class="card">
+          <div id="stok-list"></div>
+        </div>
+      </div>
+
+      <!-- JADWAL AMBIL OBAT -->
+      <div class="page" id="page-jadwal-ambil">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div class="section-title" style="font-size:20px;">🚗 Jadwal Antar-Jemput Obat</div>
+          <button class="btn btn-primary" onclick="openModal('modal-jadwal')">+ Jadwalkan</button>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Kalender Minggu Ini</div>
+            <div class="schedule-grid" id="schedule-cal"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Jadwal Hari Ini</div>
+            <div id="pickup-today"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:0;">
+          <div class="section-title" style="margin-bottom:16px;">Semua Jadwal</div>
+          <div id="pickup-all"></div>
+        </div>
+      </div>
+
+      <!-- LAPORAN -->
+      <div class="page" id="page-laporan">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div class="section-title" style="font-size:20px;">📊 Laporan & Statistik</div>
+          <button class="btn btn-accent" onclick="showToast('✅ Laporan berhasil diunduh!','success')">⬇ Unduh PDF</button>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Rekap Bulan Ini</div>
+            <div id="laporan-summary"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Kepatuhan Obat</div>
+            <div id="laporan-kepatuhan"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Distribusi Diagnosis</div>
+            <div id="laporan-diagnosis"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFIL -->
+      <div class="page" id="page-profil">
+        <div class="section-title" style="font-size:20px;margin-bottom:20px;">⚙️ Profil & Pengaturan</div>
+        <div class="grid-2">
+          <div class="card">
+            <div style="text-align:center;padding:20px 0;">
+              <div style="font-size:64px;margin-bottom:12px;" id="profil-avatar-big">👨‍⚕️</div>
+              <div style="font-size:18px;font-weight:700;" id="profil-name">Dr. Ahmad Fauzi</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-top:4px;" id="profil-role-show">Dokter</div>
+              <button class="btn btn-primary" style="margin-top:20px;" onclick="showToast('✏️ Mode edit aktif','')">Edit Profil</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Pengaturan Notifikasi</div>
+            <div id="notif-settings"></div>
+            <div class="section-title" style="margin-bottom:12px;margin-top:20px;">Ganti Peran</div>
+            <button class="btn btn-ghost" style="width:100%;" onclick="document.getElementById('role-select').classList.remove('hide');document.getElementById('app').classList.remove('show');">🔄 Ganti Peran</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end page-content -->
+  </div><!-- end main-content -->
+
+  <!-- MOBILE NAV -->
+  <div class="mobile-nav">
+    <div class="mobile-nav-inner" id="mobile-nav"></div>
+  </div>
+</div><!-- end app -->
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-tambah-pasien">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Tambah Pasien Baru</div>
+      <button class="modal-close" onclick="closeModal('modal-tambah-pasien')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Nama Lengkap</label><input class="form-input" placeholder="Nama pasien"></div>
+        <div class="form-group"><label class="form-label">NIK</label><input class="form-input" placeholder="16 digit NIK"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Tanggal Lahir</label><input class="form-input" type="date"></div>
+        <div class="form-group"><label class="form-label">Jenis Kelamin</label><select class="form-select"><option>Laki-laki</option><option>Perempuan</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Alamat</label><textarea class="form-textarea" placeholder="Alamat lengkap..."></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Diagnosis</label><select class="form-select"><option>Skizofrenia</option><option>Bipolar</option><option>Depresi Berat</option><option>OCD</option><option>Gangguan Kecemasan</option></select></div>
+        <div class="form-group"><label class="form-label">Nama Pendamping</label><input class="form-input" placeholder="Nama pendamping/wali"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="tambahPasien()">💾 Simpan Pasien</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-pmo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Catat Pemantauan Minum Obat</div>
+      <button class="modal-close" onclick="closeModal('modal-pmo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Pilih Pasien</label><select class="form-select" id="pmo-pasien-select"></select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Nama Obat</label><input class="form-input" placeholder="e.g. Haloperidol 5mg"></div>
+        <div class="form-group"><label class="form-label">Waktu Minum</label><select class="form-select"><option>Pagi (07:00)</option><option>Siang (12:00)</option><option>Malam (19:00)</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select"><option>✅ Sudah minum</option><option>⏳ Belum minum</option><option>❌ Tidak minum</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Catatan</label><textarea class="form-textarea" placeholder="Catatan tambahan..."></textarea></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="simpanPMO()">💾 Simpan PMO</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-stok">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Tambah / Update Stok Obat</div>
+      <button class="modal-close" onclick="closeModal('modal-stok')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Nama Obat</label><input class="form-input" placeholder="Nama obat"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Jumlah (tablet)</label><input class="form-input" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Stok Minimum</label><input class="form-input" type="number" placeholder="50"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Kadaluarsa</label><input class="form-input" type="date"></div>
+        <div class="form-group"><label class="form-label">Pemasok</label><input class="form-input" placeholder="Nama apotek/supplier"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="simpanStok()">💾 Simpan Stok</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-jadwal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Jadwalkan Antar-Jemput Obat</div>
+      <button class="modal-close" onclick="closeModal('modal-jadwal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Pilih Pasien</label><select class="form-select" id="jadwal-pasien-select"></select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Tanggal</label><input class="form-input" type="date"></div>
+        <div class="form-group"><label class="form-label">Jam</label><input class="form-input" type="time" value="09:00"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Nama Pendamping</label><input class="form-input" placeholder="Siapa yang mengambil?"></div>
+      <div class="form-group"><label class="form-label">Alamat Pengambilan</label><textarea class="form-textarea" placeholder="Alamat lengkap..."></textarea></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="simpanJadwal()">📅 Simpan Jadwal</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+// ============ DATA ============
+const PATIENTS = [
+  { id:1, name:'Siti Rahayu', age:42, gender:'P', diagnosis:'Skizofrenia', status:'monitor', pendamping:'Budi R.', obat:'Haloperidol 5mg', pmo:70, nik:'3271234567890001', alamat:'Jl. Merdeka No. 12, Bandung' },
+  { id:2, name:'Ahmad Supriadi', age:35, gender:'L', diagnosis:'Bipolar', status:'stable', pendamping:'Siti A.', obat:'Lithium 400mg', pmo:90, nik:'3271234567890002', alamat:'Jl. Sudirman No. 5, Bandung' },
+  { id:3, name:'Dewi Lestari', age:29, gender:'P', diagnosis:'Depresi Berat', status:'critical', pendamping:'Andi L.', obat:'Fluoxetine 20mg', pmo:40, nik:'3271234567890003', alamat:'Jl. Pahlawan No. 8, Bandung' },
+  { id:4, name:'Rudi Hartono', age:55, gender:'L', diagnosis:'OCD', status:'stable', pendamping:'Maya H.', obat:'Sertraline 50mg', pmo:85, nik:'3271234567890004', alamat:'Jl. Gatot Subroto No. 3' },
+  { id:5, name:'Nurul Hidayah', age:38, gender:'P', diagnosis:'Skizofrenia', status:'monitor', pendamping:'Yusuf K.', obat:'Clozapine 25mg', pmo:65, nik:'3271234567890005', alamat:'Jl. Diponegoro No. 17' },
+];
+
+const DRUGS = [
+  { name:'Haloperidol 5mg', stok:45, min:50, kadaluarsa:'2025-08', pemasok:'Apotek Sehat' },
+  { name:'Lithium 400mg', stok:120, min:60, kadaluarsa:'2026-03', pemasok:'Apotek Maju' },
+  { name:'Clozapine 25mg', stok:30, min:40, kadaluarsa:'2025-12', pemasok:'Apotek Sehat' },
+  { name:'Fluoxetine 20mg', stok:200, min:80, kadaluarsa:'2026-06', pemasok:'Apotek Raya' },
+  { name:'Sertraline 50mg', stok:22, min:50, kadaluarsa:'2026-01', pemasok:'Apotek Maju' },
+];
+
+const PICKUPS = [
+  { patient:'Siti Rahayu', pendamping:'Budi R.', time:'08:00', date:'Hari Ini', alamat:'Jl. Merdeka No. 12', status:'scheduled' },
+  { patient:'Dewi Lestari', pendamping:'Andi L.', time:'09:30', date:'Hari Ini', alamat:'Jl. Pahlawan No. 8', status:'done' },
+  { patient:'Nurul Hidayah', pendamping:'Yusuf K.', time:'14:00', date:'Hari Ini', alamat:'Jl. Diponegoro No. 17', status:'scheduled' },
+  { patient:'Ahmad Supriadi', pendamping:'Siti A.', time:'10:00', date:'Besok', alamat:'Jl. Sudirman No. 5', status:'scheduled' },
+];
+
+const NOTIFS = [
+  { type:'red', icon:'⚠️', title:'Stok Haloperidol Kritis!', desc:'Sisa 45 tablet, di bawah batas minimum. Segera lakukan restock.', time:'2 menit lalu', unread:true },
+  { type:'orange', icon:'💊', title:'PMO Belum Dilaporkan', desc:'Siti Rahayu belum lapor minum obat malam ini.', time:'15 menit lalu', unread:true },
+  { type:'blue', icon:'💬', title:'Pesan Baru dari Dokter', desc:'Dr. Ahmad Fauzi: "Mohon pantau kondisi Siti Rahayu hari ini."', time:'30 menit lalu', unread:true },
+  { type:'green', icon:'✅', title:'Jadwal Dikonfirmasi', desc:'Antar-jemput obat Dewi Lestari berhasil selesai.', time:'1 jam lalu', unread:false },
+  { type:'orange', icon:'📅', title:'Pengingat Jadwal', desc:'Antar-jemput obat Siti Rahayu dalam 30 menit.', time:'2 jam lalu', unread:false },
+];
+
+const CHATS = {
+  'Dr. Ahmad Fauzi': [
+    { mine:false, msg:'Selamat pagi! Ada yang bisa saya bantu?', time:'09:00' },
+    { mine:true, msg:'Dok, Siti Rahayu sepertinya kurang kooperatif untuk minum obat.', time:'09:02' },
+    { mine:false, msg:'Baik, saya akan pantau kondisinya. Tolong catat di sistem PMO ya.', time:'09:03' },
+    { mine:true, msg:'Sudah saya catat dok. Terima kasih!', time:'09:04' },
+  ],
+  'Petugas Puskesmas': [
+    { mine:false, msg:'Stok obat di gudang sudah berkurang banyak.', time:'08:30' },
+    { mine:true, msg:'Akan saya laporkan ke pemegang program segera.', time:'08:32' },
+  ],
+};
+
+let currentRole = 'dokter';
+let currentPage = 'dashboard';
+let wtStep = 0;
+let selectedContact = 'Dr. Ahmad Fauzi';
+
+const WT_STEPS = [
+  { icon:'🏥', title:'Selamat Datang di SIODGJ', desc:'Sistem terintegrasi untuk pencatatan, pelaporan, dan pemantauan data Orang Dengan Gangguan Jiwa secara real-time.' },
+  { icon:'👥', title:'Pencatatan Data Pasien', desc:'Catat dan pantau data semua pasien ODGJ dalam satu sistem yang dapat diakses oleh pasien, pendamping, petugas kesehatan, dokter dan pemegang program jiwa.' },
+  { icon:'💊', title:'Pemantauan Minum Obat (PMO)', desc:'Monitor kepatuhan minum obat pasien secara langsung selama 24 jam oleh dokter, petugas kesehatan dan pemegang program jiwa.' },
+  { icon:'💬', title:'Chat Langsung dengan Dokter', desc:'Pasien dan pendamping dapat langsung terhubung dengan dokter melalui fitur chat yang tersedia di aplikasi.' },
+  { icon:'🟢', title:'Data Real-Time', desc:'Pantau dan laporkan kondisi pasien ODGJ secara real-time. Semua data diperbarui otomatis tanpa delay.' },
+  { icon:'📦', title:'Pengingat Stok Obat', desc:'Sistem memberi notifikasi otomatis saat obat hampir habis (Out of Stock), sehingga obat tidak sampai putus.' },
+  { icon:'🚗', title:'Antar-Jemput Obat Terjadwal', desc:'Layanan antar-jemput obat oleh pendamping lebih efisien karena sudah terjadwal dalam sistem.' },
+];
+
+const ROLE_NAVS = {
+  pasien: [
+    { icon:'🏠', label:'Dashboard', page:'dashboard' },
+    { icon:'💊', label:'Obat Saya', page:'pmo' },
+    { icon:'💬', label:'Chat Dokter', page:'chat' },
+    { icon:'🔔', label:'Notifikasi', page:'notifikasi' },
+    { icon:'⚙️', label:'Profil', page:'profil' },
+  ],
+  pendamping: [
+    { icon:'🏠', label:'Dashboard', page:'dashboard' },
+    { icon:'💊', label:'PMO', page:'pmo' },
+    { icon:'🚗', label:'Jemput Obat', page:'jadwal-ambil' },
+    { icon:'💬', label:'Chat', page:'chat' },
+    { icon:'🔔', label:'Notifikasi', page:'notifikasi' },
+    { icon:'⚙️', label:'Profil', page:'profil' },
+  ],
+  petugas: [
+    { icon:'🏠', label:'Dashboard', page:'dashboard' },
+    { icon:'👥', label:'Pasien', page:'data-pasien' },
+    { icon:'💊', label:'PMO', page:'pmo' },
+    { icon:'📦', label:'Stok Obat', page:'stok-obat' },
+    { icon:'🚗', label:'Jadwal', page:'jadwal-ambil' },
+    { icon:'📊', label:'Laporan', page:'laporan' },
+    { icon:'🔔', label:'Notifikasi', page:'notifikasi' },
+    { icon:'💬', label:'Chat', page:'chat' },
+    { icon:'⚙️', label:'Profil', page:'profil' },
+  ],
+  dokter: [
+    { icon:'🏠', label:'Dashboard', page:'dashboard' },
+    { icon:'👥', label:'Pasien', page:'data-pasien' },
+    { icon:'💊', label:'PMO', page:'pmo' },
+    { icon:'💬', label:'Chat', page:'chat' },
+    { icon:'📊', label:'Laporan', page:'laporan' },
+    { icon:'🔔', label:'Notifikasi', page:'notifikasi' },
+    { icon:'⚙️', label:'Profil', page:'profil' },
+  ],
+  pemegang: [
+    { icon:'🏠', label:'Dashboard', page:'dashboard' },
+    { icon:'👥', label:'Pasien', page:'data-pasien' },
+    { icon:'📊', label:'Laporan', page:'laporan' },
+    { icon:'📦', label:'Stok Obat', page:'stok-obat' },
+    { icon:'🔔', label:'Notifikasi', page:'notifikasi' },
+    { icon:'⚙️', label:'Profil', page:'profil' },
+  ],
+};
+
+const ROLE_INFO = {
+  pasien: { name:'Bpk. Pasien Demo', icon:'👤' },
+  pendamping: { name:'Ibu Pendamping', icon:'👨‍👩‍👧' },
+  petugas: { name:'Ns. Sari Wulandari', icon:'🏥' },
+  dokter: { name:'Dr. Ahmad Fauzi', icon:'👨‍⚕️' },
+  pemegang: { name:'Kemenkes Program', icon:'📊' },
+};
+
+// ============ INIT ============
+window.onload = () => {
+  setTimeout(() => {
+    document.getElementById('splash').classList.add('hide');
+    renderWalkthrough();
+  }, 2000);
+
+  // Live time
+  setInterval(() => {
+    const now = new Date();
+    document.getElementById('live-time').textContent =
+      now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+  }, 1000);
+};
+
+// ============ WALKTHROUGH ============
+function renderWalkthrough() {
+  const s = WT_STEPS[wtStep];
+  document.getElementById('wt-icon').textContent = s.icon;
+  document.getElementById('wt-title').textContent = s.title;
+  document.getElementById('wt-desc').textContent = s.desc;
+  const dots = document.getElementById('wt-dots');
+  dots.innerHTML = WT_STEPS.map((_, i) => `<div class="wt-dot ${i===wtStep?'active':''}"></div>`).join('');
+  document.getElementById('wt-next').textContent = wtStep === WT_STEPS.length-1 ? 'Mulai Aplikasi ✓' : 'Selanjutnya →';
+}
+
+function nextWalkthrough() {
+  if (wtStep < WT_STEPS.length - 1) {
+    wtStep++;
+    renderWalkthrough();
+  } else {
+    skipWalkthrough();
+  }
+}
+
+function skipWalkthrough() {
+  document.getElementById('walkthrough').classList.add('hide');
+  // show role select
+}
+
+// ============ ROLE SELECT ============
+function selectRole(role, name, icon) {
+  currentRole = role;
+  document.getElementById('role-select').classList.add('hide');
+  document.getElementById('app').classList.add('show');
+  document.getElementById('user-avatar').textContent = ROLE_INFO[role].icon;
+  document.getElementById('user-name').textContent = ROLE_INFO[role].name;
+  document.getElementById('user-role').textContent = name;
+  buildNav(role);
+  initPages();
+  showPage('dashboard');
+  showToast(`✅ Selamat datang, ${ROLE_INFO[role].name}!`, 'success');
+}
+
+function buildNav(role) {
+  const navs = ROLE_NAVS[role];
+  const sidebarNav = document.getElementById('sidebar-nav');
+  const mobileNav = document.getElementById('mobile-nav');
+  sidebarNav.innerHTML = '<div class="nav-section">Menu Utama</div>' +
+    navs.map(n => `<div class="nav-item" id="nav-${n.page}" onclick="showPage('${n.page}')"><span class="nav-icon">${n.icon}</span>${n.label}</div>`).join('');
+  mobileNav.innerHTML = navs.slice(0,5).map(n =>
+    `<div class="mobile-nav-item" id="mnav-${n.page}" onclick="showPage('${n.page}')"><div class="m-icon">${n.icon}</div><div class="m-label">${n.label}</div></div>`
+  ).join('');
+}
+
+// ============ PAGES ============
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
+
+  const el = document.getElementById('page-'+page);
+  if (el) el.classList.add('active');
+  const nav = document.getElementById('nav-'+page);
+  if (nav) nav.classList.add('active');
+  const mnav = document.getElementById('mnav-'+page);
+  if (mnav) mnav.classList.add('active');
+
+  const titles = {
+    dashboard:'Dashboard', 'data-pasien':'Data Pasien ODGJ',
+    'patient-detail':'Detail Pasien', pmo:'Pemantauan Minum Obat (PMO)',
+    chat:'Chat', notifikasi:'Notifikasi', 'stok-obat':'Stok Obat',
+    'jadwal-ambil':'Jadwal Antar-Jemput', laporan:'Laporan & Statistik', profil:'Profil',
+  };
+  document.getElementById('topbar-title').textContent = titles[page] || page;
+  currentPage = page;
+  closeSidebar();
+}
+
+function initPages() {
+  renderDashboardPatients();
+  renderDashboardPMO();
+  renderBarChart();
+  renderStockAlerts();
+  renderFullPatients();
+  renderPMOFull();
+  renderChat();
+  renderNotifications();
+  renderStokFull();
+  renderPickupSchedule();
+  renderLaporan();
+  renderProfil();
+}
+
+// ============ DASHBOARD ============
+function renderDashboardPatients() {
+  const el = document.getElementById('dashboard-patients');
+  el.innerHTML = PATIENTS.slice(0,3).map(p => patientHTML(p)).join('');
+}
+
+function patientHTML(p) {
+  const statusMap = { stable:'status-stable', monitor:'status-monitor', critical:'status-critical' };
+  const statusLabel = { stable:'Stabil', monitor:'Perlu Pantau', critical:'Kritis' };
+  return `<div class="patient-item" onclick="showPatientDetail(${p.id})">
+    <div class="p-avatar">${p.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+    <div class="p-info">
+      <div class="p-name">${p.name}</div>
+      <div class="p-meta">${p.gender}, ${p.age}th • ${p.diagnosis}</div>
+    </div>
+    <span class="p-status ${statusMap[p.status]}">${statusLabel[p.status]}</span>
+  </div>`;
+}
+
+function showPatientDetail(id) {
+  const p = PATIENTS.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('detail-avatar').textContent = p.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  document.getElementById('detail-name').textContent = p.name;
+  document.getElementById('detail-meta').textContent = `${p.gender==='L'?'Laki-laki':'Perempuan'}, ${p.age} tahun • ${p.diagnosis}`;
+  document.getElementById('detail-info').innerHTML = `
+    <div class="report-row"><div class="report-label">NIK</div><div class="report-val" style="font-size:12px">${p.nik}</div></div>
+    <div class="report-row"><div class="report-label">Alamat</div><div class="report-val" style="font-size:12px;text-align:right">${p.alamat}</div></div>
+    <div class="report-row"><div class="report-label">Pendamping</div><div class="report-val">${p.pendamping}</div></div>
+  `;
+  document.getElementById('detail-drugs').innerHTML = `
+    <div style="background:var(--bg);padding:12px;border-radius:10px;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:700;">💊 ${p.obat}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">3x sehari sesudah makan</div>
+    </div>
+  `;
+  document.getElementById('detail-pmo-status').innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:600;">Kepatuhan</span>
+        <span style="font-size:13px;font-weight:800;color:var(--primary);">${p.pmo}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p.pmo}%"></div></div>
+    </div>
+    <div class="report-row"><div class="report-label">Pagi</div><div class="report-val">✅ Sudah</div></div>
+    <div class="report-row"><div class="report-label">Siang</div><div class="report-val">✅ Sudah</div></div>
+    <div class="report-row"><div class="report-label">Malam</div><div class="report-val" style="color:var(--warning)">⏳ Belum</div></div>
+  `;
+  showPage('patient-detail');
+}
+
+function renderDashboardPMO() {
+  const el = document.getElementById('dashboard-pmo');
+  const items = [
+    { time:'07:00', drug:'Haloperidol 5mg', patient:'Siti Rahayu', checked:true },
+    { time:'07:00', drug:'Lithium 400mg', patient:'Ahmad Supriadi', checked:true },
+    { time:'12:00', drug:'Fluoxetine 20mg', patient:'Dewi Lestari', checked:false },
+    { time:'19:00', drug:'Clozapine 25mg', patient:'Nurul Hidayah', checked:false },
+  ];
+  el.innerHTML = items.map((item, i) => `
+    <div class="pmo-item">
+      <div class="pmo-time">${item.time}</div>
+      <div>
+        <div class="pmo-drug">${item.drug}</div>
+        <div class="pmo-patient">${item.patient}</div>
+      </div>
+      <button class="check-btn ${item.checked?'checked':''}" onclick="togglePMO(this, ${i})">${item.checked?'✓':''}</button>
+    </div>
+  `).join('');
+}
+
+function togglePMO(btn, i) {
+  btn.classList.toggle('checked');
+  btn.textContent = btn.classList.contains('checked') ? '✓' : '';
+  showToast(btn.classList.contains('checked') ? '✅ PMO berhasil dicatat!' : '↩ PMO dibatalkan', btn.classList.contains('checked') ? 'success' : '');
+}
+
+function renderBarChart() {
+  const chart = document.getElementById('bar-chart');
+  const labelEl = document.getElementById('chart-labels');
+  const days = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+  const vals = [18, 24, 20, 31, 27, 15, 22];
+  const max = Math.max(...vals);
+  chart.innerHTML = vals.map((v, i) => `
+    <div class="bar-col">
+      <div class="bar-fill" style="height:${(v/max*100)}px;"></div>
+      <div class="bar-label">${v}</div>
+    </div>
+  `).join('');
+  // labels via overlay
+  chart.parentElement.querySelector('#chart-labels') && (labelEl.innerHTML = days.map(d => `<span style="flex:1;text-align:center">${d}</span>`).join(''));
+}
+
+function renderStockAlerts() {
+  const el = document.getElementById('stock-alerts');
+  const critical = DRUGS.filter(d => d.stok < d.min);
+  el.innerHTML = critical.map(d => `
+    <div class="stock-alert" style="margin-bottom:10px;">
+      <div class="alert-icon">📦</div>
+      <div class="alert-text">
+        <div class="alert-title">${d.name}</div>
+        <div class="alert-sub">Sisa ${d.stok} tablet (min: ${d.min})</div>
+      </div>
+      <button class="alert-action" onclick="showPage('stok-obat')">Restock</button>
+    </div>
+  `).join('') || '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px;">✅ Semua stok dalam kondisi baik</div>';
+}
+
+// ============ FULL PATIENTS ============
+function renderFullPatients() {
+  const el = document.getElementById('full-patient-list');
+  const pmoSel = document.getElementById('pmo-pasien-select');
+  const jadwalSel = document.getElementById('jadwal-pasien-select');
+  el.innerHTML = PATIENTS.map(p => patientHTML(p)).join('');
+  if (pmoSel) pmoSel.innerHTML = PATIENTS.map(p => `<option>${p.name}</option>`).join('');
+  if (jadwalSel) jadwalSel.innerHTML = PATIENTS.map(p => `<option>${p.name}</option>`).join('');
+}
+
+function filterPatients(q) {
+  const el = document.getElementById('full-patient-list');
+  const filtered = PATIENTS.filter(p => p.name.toLowerCase().includes(q.toLowerCase()) || p.diagnosis.toLowerCase().includes(q.toLowerCase()));
+  el.innerHTML = filtered.length ? filtered.map(p => patientHTML(p)).join('') : '<div style="text-align:center;padding:32px;color:var(--text-muted);">Pasien tidak ditemukan</div>';
+}
+
+// ============ PMO FULL ============
+function renderPMOFull() {
+  const el = document.getElementById('pmo-full-list');
+  const el2 = document.getElementById('pmo-compliance');
+  const items = PATIENTS.map(p => ({
+    patient: p.name, drug: p.obat, pmo: p.pmo,
+    sessions: ['Pagi', 'Siang', 'Malam'],
+    checks: [true, p.pmo > 60, p.pmo > 70]
+  }));
+  el.innerHTML = items.map((item, i) => `
+    <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">${item.patient}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">💊 ${item.drug}</div>
+      <div style="display:flex;gap:8px;">
+        ${item.sessions.map((s, j) => `
+          <div style="flex:1;text-align:center;padding:6px;border-radius:8px;background:${item.checks[j]?'#d1fae5':'#fee2e2'};">
+            <div style="font-size:10px;font-weight:700;color:${item.checks[j]?'#065f46':'#991b1b'}">${s}</div>
+            <div style="font-size:16px;">${item.checks[j]?'✅':'❌'}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  el2.innerHTML = PATIENTS.map(p => `
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:12px;font-weight:600;">${p.name}</span>
+        <span style="font-size:12px;font-weight:800;color:${p.pmo>=80?'var(--success)':p.pmo>=60?'var(--warning)':'var(--danger)'};">${p.pmo}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p.pmo}%;background:${p.pmo>=80?'var(--success)':p.pmo>=60?'var(--warning)':'var(--danger)'}"></div></div>
+    </div>
+  `).join('');
+}
+
+// ============ CHAT ============
+function renderChat() {
+  const contacts = Object.keys(CHATS);
+  const contactEl = document.getElementById('contact-list');
+  contactEl.innerHTML = contacts.map(c => `
+    <div class="patient-item" style="margin-bottom:8px;" onclick="selectContact('${c}')">
+      <div class="p-avatar" style="font-size:20px;background:linear-gradient(135deg,#f77f00,#fcbf49);">💬</div>
+      <div class="p-info">
+        <div class="p-name">${c}</div>
+        <div class="p-meta">Klik untuk membuka percakapan</div>
+      </div>
+      <span class="realtime-dot"></span>
+    </div>
+  `).join('');
+  loadChat(selectedContact);
+}
+
+function selectContact(name) {
+  selectedContact = name;
+  document.getElementById('chat-with').textContent = name;
+  loadChat(name);
+}
+
+function loadChat(name) {
+  const msgs = CHATS[name] || [];
+  document.getElementById('chat-messages').innerHTML = msgs.map(m => `
+    <div class="chat-msg ${m.mine?'mine':''}">
+      <div class="chat-bubble">${m.msg}</div>
+      <div class="chat-time">${m.time}</div>
+    </div>
+  `).join('');
+  document.getElementById('chat-messages').scrollTop = 9999;
+}
+
+function chatEnter(e) { if (e.key === 'Enter') sendChat(); }
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  if (!CHATS[selectedContact]) CHATS[selectedContact] = [];
+  const now = new Date();
+  const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  CHATS[selectedContact].push({ mine:true, msg, time });
+  input.value = '';
+  loadChat(selectedContact);
+  // Simulate reply
+  setTimeout(() => {
+    CHATS[selectedContact].push({ mine:false, msg:'Pesan Anda sudah diterima. Terima kasih!', time });
+    loadChat(selectedContact);
+  }, 1500);
+}
+
+// ============ NOTIFICATIONS ============
+function renderNotifications() {
+  const el = document.getElementById('notif-list');
+  el.innerHTML = NOTIFS.map(n => `
+    <div class="notif-item ${n.unread?'unread':''}" onclick="this.classList.remove('unread')">
+      <div class="notif-icon ${n.type}">${n.icon}</div>
+      <div class="notif-text">
+        <div class="notif-title">${n.title}</div>
+        <div class="notif-desc">${n.desc}</div>
+        <div class="notif-time">${n.time}</div>
+      </div>
+      ${n.unread ? '<div style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:6px;"></div>' : ''}
+    </div>
+  `).join('');
+}
+
+// ============ STOCK ============
+function renderStokFull() {
+  const alertEl = document.getElementById('stock-alert-banner');
+  const listEl = document.getElementById('stok-list');
+  const critical = DRUGS.filter(d => d.stok < d.min);
+  alertEl.innerHTML = critical.map(d => `
+    <div class="stock-alert">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-text">
+        <div class="alert-title">Stok Kritis: ${d.name}</div>
+        <div class="alert-sub">Sisa ${d.stok} tablet | Min: ${d.min} tablet | Pemasok: ${d.pemasok}</div>
+      </div>
+      <button class="alert-action" onclick="openModal('modal-stok')">Restock Sekarang</button>
+    </div>
+  `).join('');
+
+  listEl.innerHTML = `<table style="width:100%;border-collapse:separate;border-spacing:0;">
+    <thead><tr style="background:var(--bg);">
+      <th style="padding:12px;text-align:left;font-size:12px;font-weight:700;color:var(--text-muted);">Nama Obat</th>
+      <th style="padding:12px;text-align:center;font-size:12px;font-weight:700;color:var(--text-muted);">Stok</th>
+      <th style="padding:12px;text-align:center;font-size:12px;font-weight:700;color:var(--text-muted);">Min</th>
+      <th style="padding:12px;text-align:center;font-size:12px;font-weight:700;color:var(--text-muted);">Status</th>
+      <th style="padding:12px;text-align:center;font-size:12px;font-weight:700;color:var(--text-muted);">Kadaluarsa</th>
+    </tr></thead>
+    <tbody>${DRUGS.map(d => {
+      const isLow = d.stok < d.min;
+      return `<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:14px 12px;font-weight:600;">${d.name}</td>
+        <td style="padding:14px 12px;text-align:center;font-weight:700;color:${isLow?'var(--danger)':'var(--text)'};">${d.stok}</td>
+        <td style="padding:14px 12px;text-align:center;color:var(--text-muted);">${d.min}</td>
+        <td style="padding:14px 12px;text-align:center;"><span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;background:${isLow?'#fee2e2':'#d1fae5'};color:${isLow?'#991b1b':'#065f46'};">${isLow?'⚠ Kritis':'✅ Aman'}</span></td>
+        <td style="padding:14px 12px;text-align:center;font-size:13px;color:var(--text-muted);">${d.kadaluarsa}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ============ PICKUP SCHEDULE ============
+function renderPickupSchedule() {
+  const cal = document.getElementById('schedule-cal');
+  const today = document.getElementById('pickup-today');
+  const all = document.getElementById('pickup-all');
+  const days = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  const now = new Date();
+  cal.innerHTML = days.map((d,i) => {
+    const date = new Date(now); date.setDate(now.getDate() - now.getDay() + i);
+    const isToday = date.toDateString() === now.toDateString();
+    return `<div class="day-cell ${isToday?'today':''}">
+      <div class="day-name">${d}</div>
+      <div class="day-num">${date.getDate()}</div>
+      ${[0,2,4].includes(i) ? '<div class="day-dot"></div>' : ''}
+    </div>`;
+  }).join('');
+
+  const todayPickups = PICKUPS.filter(p => p.date === 'Hari Ini');
+  today.innerHTML = todayPickups.map(p => pickupHTML(p)).join('');
+  all.innerHTML = PICKUPS.map(p => pickupHTML(p)).join('');
+}
+
+function pickupHTML(p) {
+  return `<div class="pickup-item">
+    <div class="pickup-icon">🚗</div>
+    <div class="pickup-info">
+      <div class="pickup-name">${p.patient}</div>
+      <div class="pickup-addr">Pendamping: ${p.pendamping} • ${p.alamat}</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="pickup-time">${p.date} ${p.time}</div>
+      <span class="pickup-status-chip ${p.status==='done'?'chip-done':'chip-scheduled'}">${p.status==='done'?'✓ Selesai':'🕐 Terjadwal'}</span>
+    </div>
+  </div>`;
+}
+
+// ============ LAPORAN ============
+function renderLaporan() {
+  document.getElementById('laporan-summary').innerHTML = [
+    ['Total Pasien', '247'],['Kunjungan Baru', '14'],['PMO Tercatat', '1,840'],['Kepatuhan Rata-rata', '72%'],
+  ].map(([l,v]) => `<div class="report-row"><div class="report-label">${l}</div><div class="report-val">${v}</div></div>`).join('');
+
+  document.getElementById('laporan-kepatuhan').innerHTML = PATIENTS.map(p => `
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+        <span>${p.name}</span><span style="font-weight:800;">${p.pmo}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p.pmo}%"></div></div>
+    </div>
+  `).join('');
+
+  const diagnoses = ['Skizofrenia','Bipolar','Depresi Berat','OCD','Kecemasan'];
+  const counts = [2,1,1,1,0];
+  document.getElementById('laporan-diagnosis').innerHTML = diagnoses.map((d,i) => counts[i] > 0 ? `
+    <div class="report-row">
+      <div class="report-label">${d}</div>
+      <div class="report-val">${counts[i]} pasien</div>
+    </div>
+  ` : '').join('');
+}
+
+// ============ PROFIL ============
+function renderProfil() {
+  document.getElementById('profil-avatar-big').textContent = ROLE_INFO[currentRole]?.icon || '👤';
+  document.getElementById('profil-name').textContent = ROLE_INFO[currentRole]?.name || 'Pengguna';
+  document.getElementById('profil-role-show').textContent = currentRole;
+
+  document.getElementById('notif-settings').innerHTML = [
+    ['💊 Pengingat PMO', true],
+    ['📦 Alert Stok Obat', true],
+    ['💬 Pesan Chat', true],
+    ['🚗 Jadwal Penjemputan', false],
+  ].map(([label, on]) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px;font-weight:600;">${label}</span>
+      <div onclick="this.classList.toggle('on')" style="width:44px;height:24px;border-radius:12px;background:${on?'var(--primary)':'var(--border)'};cursor:pointer;position:relative;transition:all 0.2s;">
+        <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;${on?'left:23px':'left:3px'};transition:all 0.2s;"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============ MODALS ============
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('show'); }));
+
+function tambahPasien() { closeModal('modal-tambah-pasien'); showToast('✅ Pasien berhasil ditambahkan!', 'success'); }
+function simpanPMO() { closeModal('modal-pmo'); showToast('✅ PMO berhasil dicatat!', 'success'); }
+function simpanStok() { closeModal('modal-stok'); showToast('✅ Stok obat berhasil diperbarui!', 'success'); }
+function simpanJadwal() { closeModal('modal-jadwal'); showToast('📅 Jadwal berhasil disimpan!', 'success'); }
+
+// ============ SIDEBAR ============
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+
+// ============ TOAST ============
+function showToast(msg, type) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; toast.style.transition = '0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// Auto-trigger bar chart render after short delay
+setTimeout(() => {
+  const chartEl = document.getElementById('chart-labels');
+  if (chartEl) {
+    const days = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+    chartEl.innerHTML = days.map(d => `<span style="flex:1;text-align:center">${d}</span>`).join('');
+  }
+}, 100);
+</script>
+</body>
+</html>

@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f4c81">
+  <meta name="description" content="SiJaga Jiwa - Sistem Informasi & Pemantauan ODGJ Terintegrasi">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SiJaga Jiwa">
+  <title>SiJaga Jiwa - Jaga Jiwa, Jaga Keluarga</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ==================== SPLASH ==================== -->
+<div id="splash">
+  <div class="splash-content">
+    <svg width="100" height="100" viewBox="0 0 72 72" fill="none" style="margin-bottom:8px;">
+      <circle cx="36" cy="36" r="36" fill="url(#grad-main)"/>
+      <defs>
+        <linearGradient id="grad-main" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#00897B"/>
+          <stop offset="100%" stop-color="#004D40"/>
+        </linearGradient>
+      </defs>
+      <path d="M36 14 L52 21 L52 36 C52 45.5 44.5 53.5 36 57 C27.5 53.5 20 45.5 20 36 L20 21 Z" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+      <path d="M36 46 C36 46 26 39 26 33 C26 30 28.5 28 31.5 28 C33.5 28 35 29.2 36 30.5 C37 29.2 38.5 28 40.5 28 C43.5 28 46 30 46 33 C46 39 36 46 36 46Z" fill="#F9A825"/>
+      <path d="M24 36 L28 36 L30 31 L33 41 L36 34 L38 38 L40 36 L48 36" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+    </svg>
+    <div class="splash-appname"><span class="si">Si</span><span class="jaga">Jaga</span> <span class="jiwa">Jiwa</span></div>
+    <div class="splash-sub">Jaga Jiwa, Jaga Keluarga</div>
+    <div class="splash-by">by Puskesmas Blega</div>
+    <div class="splash-pulse"></div>
+  </div>
+</div>
+
+<!-- ==================== WALKTHROUGH ==================== -->
+<div id="walkthrough">
+  <div class="wt-card" id="wt-card">
+    <span class="wt-icon" id="wt-icon">🏥</span>
+    <div class="wt-title" id="wt-title">Selamat Datang di SiJaga Jiwa</div>
+    <div class="wt-desc" id="wt-desc">Jaga Jiwa, Jaga Keluarga. Sistem terintegrasi untuk pencatatan, pelaporan, dan pemantauan data Orang Dengan Gangguan Jiwa secara real-time.</div>
+    <div class="wt-dots" id="wt-dots"></div>
+    <div class="wt-actions">
+      <button class="btn btn-ghost" id="wt-skip" onclick="skipWalkthrough()">Lewati</button>
+      <button class="btn btn-primary" id="wt-next" onclick="nextWalkthrough()">Selanjutnya →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ROLE SELECT ==================== -->
+<div id="role-select">
+  <div class="role-card">
+    <div class="role-title">Login</div>
+    <div class="role-sub">Pilih peran Anda untuk melanjutkan</div>
+    <div class="role-grid">
+      <div class="role-btn" onclick="selectRole('pendamping','Pendamping','👤')">
+        <div class="role-icon-svg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <div class="role-name">Pendamping</div>
+        <div class="role-desc">Keluarga Pasien</div>
+      </div>
+      <div class="role-btn" onclick="selectRole('petugas','Petugas Kesehatan','👤')">
+        <div class="role-icon-svg">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+        </div>
+        <div class="role-name">Petugas</div>
+        <div class="role-desc">Monitoring & Lapor</div>
+      </div>
+      <div class="role-btn" onclick="selectRole('dokter','Dokter','👤')">
+        <div class="role-icon-svg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+        </div>
+        <div class="role-name">Dokter</div>
+        <div class="role-desc">Resep & Konsultasi</div>
+      </div>
+      <div class="role-btn" onclick="selectRole('pemegang','Pemegang Program','👤')">
+        <div class="role-icon-svg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        </div>
+        <div class="role-name">Program</div>
+        <div class="role-desc">Analisis Data</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== AUTH PAGE ==================== -->
+<div id="auth-page">
+  <div class="auth-card">
+    <button class="auth-back" onclick="goBackToRoleSelect()">← Kembali pilih peran</button>
+
+    <div class="auth-header">
+      <span class="auth-icon" id="auth-icon">👤</span>
+      <div class="auth-title" id="auth-role-title">Pasien</div>
+      <div class="auth-subtitle" id="auth-role-subtitle">Masuk atau daftar sebagai Pasien</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Masuk</button>
+      <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Daftar Baru</button>
+    </div>
+
+    <!-- Login Form -->
+    <div class="auth-form active" id="form-login">
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input class="form-input" id="login-username" type="text" placeholder="Masukkan username" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="password-wrapper">
+            <input class="form-input" id="login-password" type="password" placeholder="Masukkan password" required>
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('login-password', this)">👁️</button>
+          </div>
+        </div>
+        <div class="form-error" id="login-error"></div>
+        <button class="btn btn-primary" type="submit" style="width:100%;margin-top:8px;">🔐 Masuk</button>
+      </form>
+      <div class="auth-divider">atau</div>
+      <p style="text-align:center;font-size:13px;color:var(--text-muted);">
+        Belum punya akun? <a href="#" onclick="switchAuthTab('register');return false;" style="color:var(--primary);font-weight:700;text-decoration:none;">Daftar sekarang</a>
+      </p>
+    </div>
+
+    <!-- Register Form -->
+    <div class="auth-form" id="form-register">
+      <form onsubmit="handleRegister(event)">
+        <div id="register-fields">
+          <!-- Dynamic fields will be injected here by auth.js -->
+        </div>
+        <div class="form-error" id="register-error"></div>
+        <button class="btn btn-success" type="submit" style="width:100%;margin-top:8px;">📝 Daftar Akun</button>
+      </form>
+      <div class="auth-divider">atau</div>
+      <p style="text-align:center;font-size:13px;color:var(--text-muted);">
+        Sudah punya akun? <a href="#" onclick="switchAuthTab('login');return false;" style="color:var(--primary);font-weight:700;text-decoration:none;">Masuk di sini</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MAIN APP ==================== -->
+<div id="app">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">SiJaga Jiwa<span>Sistem Informasi & Pemantauan ODGJ</span></div>
+    <div class="sidebar-user">
+      <div class="avatar" id="user-avatar">👨‍⚕️</div>
+      <div class="user-info">
+        <div class="name" id="user-name">dr. Moslihin</div>
+        <div class="role-tag" id="user-role">Dokter</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav" style="flex:1; overflow-y:auto;"></nav>
+    <div style="padding: 16px;">
+      <button class="btn btn-danger" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="logoutUser()">
+        Keluar
+      </button>
+    </div>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="topbar">
+      <button class="icon-btn hamburger" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="icon-btn" onclick="openModal('modal-notif')" title="Notifikasi">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span class="badge-dot" id="header-notif-dot"></span>
+        </button>
+        <button class="icon-btn" onclick="openModal('modal-chat')" title="Pesan">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </button>
+        <button class="icon-btn" onclick="showPage('profil')" title="Pengaturan">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- ========== DASHBOARD ========== -->
+      <div class="page active" id="page-dashboard">
+        <div class="rt-banner">
+          <div>🟢</div>
+          <div class="rt-txt">Data kondisi pasien ODGJ terpantau <strong>real-time</strong> — Semua data diperbarui otomatis</div>
+          <div class="rt-time" id="live-time">--:--</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card blue" id="dash-pasien-stat" onclick="showPage('data-pasien')">
+            <div class="stat-label">Total Pasien</div>
+            <div class="stat-value" id="stat-pasien-total">0</div>
+            <div class="stat-change" id="stat-pasien-change">Memuat...</div>
+            <div class="stat-icon">👥</div>
+          </div>
+          <div class="stat-card cyan" id="dash-pmo-stat" onclick="showPage('pmo')">
+            <div class="stat-label">PMO Hari Ini</div>
+            <div class="stat-value" id="stat-pmo-total">0</div>
+            <div class="stat-change" id="stat-pmo-change">0 sudah minum</div>
+            <div class="stat-icon">💊</div>
+          </div>
+          <div class="stat-card orange" id="dash-stok-widget" onclick="showPage('stok-obat')">
+            <div class="stat-label">Stok Kritis</div>
+            <div class="stat-value" id="stat-stok-kritis">0</div>
+            <div class="stat-change" id="stat-stok-change">Aman</div>
+            <div class="stat-icon">📦</div>
+          </div>
+          <div class="stat-card green" id="dash-jemput-stat" onclick="showPage('jadwal-ambil')">
+            <div class="stat-label">Penjemputan</div>
+            <div class="stat-value" id="stat-jemput-total">0</div>
+            <div class="stat-change" id="stat-jemput-change">Terjadwal hari ini</div>
+            <div class="stat-icon">🚗</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title">Pasien Perlu Perhatian</div>
+              <div class="section-action" onclick="showPage('data-pasien')">Lihat semua →</div>
+            </div>
+            <div class="patient-list" id="dashboard-patients"></div>
+          </div>
+          <div class="card" id="dash-pmo-list-card">
+            <div class="section-header">
+              <div class="section-title">PMO Hari Ini</div>
+              <div class="section-action" onclick="showPage('pmo')">Semua →</div>
+            </div>
+            <div id="dashboard-pmo"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card" id="dash-chart-card">
+            <div class="section-header">
+              <div class="section-title">📊 Tren Kunjungan (7 Hari)</div>
+            </div>
+            <div style="position: relative; height: 200px; width: 100%;">
+              <canvas id="dashboardChart"></canvas>
+            </div>
+          </div>
+          <div class="card" id="dash-stok-alert-card">
+            <div class="section-header">
+              <div class="section-title">⚠️ Alert Stok Obat</div>
+              <div class="section-action" onclick="showPage('stok-obat')">Kelola →</div>
+            </div>
+            <div id="stock-alerts"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== DATA PASIEN ========== -->
+      <div class="page" id="page-data-pasien">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="font-size:20px;">Data Pasien ODGJ</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;"><span class="realtime-dot"></span>Terpantau real-time</div>
+          </div>
+          <button class="btn btn-primary" id="btn-tambah-pasien" onclick="openModal('modal-tambah-pasien')">+ Tambah Pasien</button>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <input type="text" class="form-input" placeholder="🔍  Cari nama pasien, NIK..." oninput="filterPatients(this.value)" style="margin-bottom:0;">
+        </div>
+        <div class="card">
+          <div class="patient-list" id="full-patient-list"></div>
+        </div>
+      </div>
+
+      <!-- ========== PATIENT DETAIL ========== -->
+      <div class="page" id="page-patient-detail">
+        <div class="back-btn" onclick="showPage('data-pasien')">← Kembali ke Daftar Pasien</div>
+        <div class="detail-hero" style="position:relative;">
+          <div class="dh-avatar" id="detail-avatar">JD</div>
+          <div class="dh-name" id="detail-name">John Doe</div>
+          <div class="dh-meta" id="detail-meta">L, 35th • Skizofrenia</div>
+          <div style="position:absolute;top:20px;right:20px;display:flex;gap:8px;">
+            <button class="btn btn-ghost" id="btn-edit-pasien" style="color:#fff;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);" onclick="openEditPatient()">✏️ Edit Data</button>
+            <button class="btn btn-danger" id="btn-hapus-pasien" style="padding:8px 12px;font-size:12px;display:none;" onclick="hapusPasien()">🗑️ Hapus</button>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <div class="section-title" style="margin-bottom:12px;">Informasi Dasar</div>
+            <div id="detail-info"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:12px;">Obat Saat Ini</div>
+            <div id="detail-drugs"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:12px;">Status PMO</div>
+            <div id="detail-pmo-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PMO ========== -->
+      <div class="page" id="page-pmo">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="font-size:20px;">Pemantauan Minum Obat</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Dapat diakses 24 jam oleh dokter & petugas</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modal-pmo')">+ Catat PMO</button>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title" style="margin-bottom:12px;">Jadwal Minum Obat Hari Ini</div>
+            <div id="pmo-full-list"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Tingkat Kepatuhan (Real-time)</div>
+            <div id="pmo-compliance"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== CHAT & NOTIFIKASI MOVED TO MODALS ========== -->
+
+      <!-- ========== STOK OBAT ========== -->
+      <div class="page" id="page-stok-obat">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div class="section-title" style="font-size:20px;">📦 Manajemen Stok Obat</div>
+          <button class="btn btn-primary" onclick="openModal('modal-stok')">+ Tambah Stok</button>
+        </div>
+        <div id="stock-alert-banner"></div>
+        <div class="card">
+          <div id="stok-list"></div>
+        </div>
+      </div>
+
+      <!-- ========== JADWAL AMBIL OBAT ========== -->
+      <div class="page" id="page-jadwal-ambil">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div class="section-title" style="font-size:20px;">🚗 Jadwal Antar-Jemput Obat</div>
+          <button class="btn btn-primary" onclick="openJadwalModal()">+ Jadwalkan</button>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Kalender Minggu Ini</div>
+            <div class="schedule-grid" id="schedule-cal"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Jadwal Hari Ini</div>
+            <div id="pickup-today"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:0;">
+          <div class="section-title" style="margin-bottom:16px;">Semua Jadwal</div>
+          <div id="pickup-all"></div>
+        </div>
+      </div>
+
+      <!-- ========== LAPORAN ========== -->
+      <div class="page" id="page-laporan">
+        <div class="section-header" style="margin-bottom:20px;">
+          <div class="section-title" style="font-size:20px;">📊 Laporan & Statistik</div>
+          <button class="btn btn-accent" onclick="showToast('✅ Laporan berhasil diunduh!','success')">⬇ Unduh PDF</button>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Rekap Bulan Ini</div>
+            <div id="laporan-summary"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Kepatuhan Obat</div>
+            <div id="laporan-kepatuhan"></div>
+          </div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Distribusi Diagnosis</div>
+            <div id="laporan-diagnosis"></div>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:20px;">
+          <div class="section-header" style="margin-bottom:16px;">
+            <div class="section-title">Riwayat Laporan</div>
+            <select id="report-period" class="form-input" style="width:auto; padding:6px 12px; font-size:12px;" onchange="updateReportChart()">
+              <option value="monthly">Bulanan</option>
+              <option value="semester">Semester</option>
+              <option value="yearly">Tahunan</option>
+            </select>
+          </div>
+          <div style="position: relative; height:300px; width:100%;">
+            <canvas id="reportChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PROFIL ========== -->
+      <div class="page" id="page-profil">
+        <div class="section-title" style="font-size:24px;margin-bottom:20px;color:var(--primary);">Profil & Pengaturan</div>
+        
+        <div class="profile-layout">
+          <!-- Profile Header Card -->
+          <div class="profile-header-card">
+            <div style="position:relative;">
+              <div class="ph-avatar" id="profil-avatar-big">👨‍⚕️</div>
+              <label for="update-avatar-input" style="position:absolute;bottom:0;right:0;background:var(--primary);color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:3px solid #fff;box-shadow:0 4px 8px rgba(0,0,0,0.1);font-size:14px;" title="Update Foto">
+                <span style="transform:translateY(-1px)">+</span>
+              </label>
+              <input type="file" id="update-avatar-input" accept="image/*" style="display:none;" onchange="updateProfilePhoto(this)">
+            </div>
+            <div class="ph-info">
+              <div class="ph-name" id="profil-name">dr. Moslihin</div>
+              <div class="ph-role" id="profil-role-show">Dokter</div>
+            </div>
+          </div>
+
+          <!-- Profile Tabs Navigation -->
+          <div class="profile-tabs">
+            <button class="ptab-btn active" onclick="switchProfileTab('akun')">Informasi Akun</button>
+            <button class="ptab-btn" onclick="switchProfileTab('pribadi')">Data Pribadi</button>
+            <button class="ptab-btn" onclick="switchProfileTab('pengaturan')">Pengaturan</button>
+          </div>
+
+          <!-- Tab Content Area -->
+          <div class="profile-content card">
+            
+            <!-- Tab: Informasi Akun -->
+            <div class="ptab-content active" id="ptab-akun">
+              <div class="section-title" style="margin-bottom:16px;">Informasi Akun</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Username</label>
+                  <input class="form-input" type="text" id="profil-username" disabled>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Peran (Role)</label>
+                  <input class="form-input" type="text" id="profil-role" disabled>
+                </div>
+              </div>
+              <div class="section-title" style="margin-top:24px;margin-bottom:16px;">Ubah Password</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Password Lama</label>
+                  <input class="form-input" type="password" placeholder="Masukkan password lama">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Password Baru</label>
+                  <input class="form-input" type="password" placeholder="Minimal 6 karakter">
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="showToast('Password berhasil diperbarui', 'success')">Simpan Password</button>
+            </div>
+
+            <!-- Tab: Data Pribadi -->
+            <div class="ptab-content" id="ptab-pribadi">
+              <div class="section-title" style="margin-bottom:16px;">Data Pribadi</div>
+              <!-- This section will be populated differently based on role via pages.js (e.g., NIP/STR for doctors, NIK for patients) -->
+              <div id="profil-dynamic-fields">
+                <div class="form-group">
+                  <label class="form-label">Nama Lengkap</label>
+                  <input class="form-input" type="text" id="profil-nama-lengkap">
+                </div>
+                <div class="form-row" id="profil-row-2">
+                  <div class="form-group">
+                    <label class="form-label" id="profil-label-id">ID / NIP</label>
+                    <input class="form-input" type="text" id="profil-id-val">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">No. Telepon / WhatsApp</label>
+                    <input class="form-input" type="text" id="profil-phone">
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="simpanProfil()">Simpan Data Pribadi</button>
+            </div>
+
+            <!-- Tab: Pengaturan -->
+            <div class="ptab-content" id="ptab-pengaturan">
+              <div class="section-title" style="margin-bottom:16px;">Pengaturan Aplikasi</div>
+              <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+                <div>
+                  <div style="font-weight:600;font-size:14px;">Notifikasi Suara</div>
+                  <div style="font-size:12px;color:var(--text-muted);">Bunyikan nada saat ada pesan atau notifikasi baru</div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" checked>
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+                <div>
+                  <div style="font-weight:600;font-size:14px;">Email Laporan Mingguan</div>
+                  <div style="font-size:12px;color:var(--text-muted);">Kirim rekap data kepatuhan ke email</div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              
+              <!-- Additional settings populated via JS -->
+              <div id="notif-settings"></div>
+
+              <!-- Superadmin specific tools -->
+              <div id="superadmin-zone"></div>
+
+              <p style="font-size:12px;color:var(--text-muted);margin-top:20px;text-align:center;">SiJaga Jiwa v4.1.2</p>
+            </div>
+
+          </div>
+          
+          <div style="margin: 20px 0;">
+            <button class="btn btn-danger" style="width:100%; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 12px; font-weight: 700; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);" onclick="logoutUser()">
+              Keluar dari Aplikasi
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end page-content -->
+  </div><!-- end main-content -->
+
+  <!-- MODAL EDIT PASIEN -->
+  <div class="modal-overlay" id="modal-edit-pasien">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Edit Data Pasien</div>
+        <button class="modal-close" onclick="closeModal('modal-edit-pasien')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-p-id">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nama Lengkap</label><input class="form-input" id="edit-p-nama"></div>
+          <div class="form-group"><label class="form-label">NIK</label><input class="form-input" id="edit-p-nik"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Diagnosis</label><input class="form-input" id="edit-p-diag"></div>
+          <div class="form-group"><label class="form-label">Status</label>
+            <select class="form-select" id="edit-p-status">
+              <option value="stable">Stabil</option>
+              <option value="monitor">Perlu Pantau</option>
+              <option value="critical">Kritis</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Alamat</label><textarea class="form-textarea" id="edit-p-alamat"></textarea></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="simpanEditPasien()">Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE NAV -->
+  <div class="mobile-nav">
+    <div class="mobile-nav-inner" id="mobile-nav"></div>
+  </div>
+</div><!-- end app -->
+
+<!-- ==================== MODALS ==================== -->
+<div class="modal-overlay" id="modal-tambah-pasien">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Tambah Pasien Baru</div>
+      <button class="modal-close" onclick="closeModal('modal-tambah-pasien')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Nama Lengkap</label><input class="form-input" id="tp-nama" placeholder="Nama pasien"></div>
+        <div class="form-group"><label class="form-label">NIK</label><input class="form-input" id="tp-nik" placeholder="16 digit NIK"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Tanggal Lahir</label><input class="form-input" id="tp-tgl" type="date"></div>
+        <div class="form-group"><label class="form-label">Jenis Kelamin</label><select class="form-select" id="tp-jk"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Alamat</label><textarea class="form-textarea" id="tp-alamat" placeholder="Alamat lengkap..."></textarea></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Diagnosis</label>
+          <input class="form-input" list="diag-list" id="tp-diag" placeholder="Ketik atau pilih diagnosis...">
+          <datalist id="diag-list">
+            <option value="Skizofrenia">
+            <option value="Bipolar">
+            <option value="Depresi Berat">
+            <option value="OCD">
+            <option value="Gangguan Kecemasan">
+            <option value="Skizoafektif">
+            <option value="PTSD (Post-Traumatic Stress Disorder)">
+            <option value="Gangguan Psikotik Akut">
+            <option value="Demensia">
+            <option value="Skizotipal">
+          </datalist>
+        </div>
+        <div class="form-group"><label class="form-label">Nama Pendamping</label><input class="form-input" id="tp-pendamping" placeholder="Nama pendamping/wali"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="tambahPasien()">Simpan Pasien</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-pmo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Catat Pemantauan Minum Obat</div>
+      <button class="modal-close" onclick="closeModal('modal-pmo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Pilih Pasien</label>
+        <input class="form-input" list="pmo-pasien-list" id="pmo-pasien-input" placeholder="Ketik nama pasien...">
+        <datalist id="pmo-pasien-list"></datalist>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nama Obat</label>
+          <input class="form-input" list="pmo-obat-list" id="pmo-obat-input" placeholder="e.g. Haloperidol 5mg">
+          <datalist id="pmo-obat-list"></datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Waktu Minum (24-jam)</label>
+          <input type="time" class="form-input" id="pmo-waktu-input" value="07:00" step="60">
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="pmo-status-select"><option value="done">✅ Sudah minum</option><option value="pending">⏳ Belum minum</option><option value="missed">❌ Tidak minum</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reaksi / Gejala Lainnya</label>
+        <textarea class="form-textarea" id="pmo-gejala-input" placeholder="e.g. Mual, pusing, gelisah, atau tidak ada..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Foto Bukti (Opsional)</label>
+        <input class="form-input" type="file" accept="image/*" id="pmo-foto-bukti">
+      </div>
+      <div class="form-group"><label class="form-label">Catatan Tambahan</label><textarea class="form-textarea" id="pmo-catatan-input" placeholder="Catatan tambahan..."></textarea></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="simpanPMO()">Simpan PMO</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL NOTIFIKASI ==================== -->
+<div class="modal-overlay" id="modal-notif">
+  <div class="modal" style="max-width:500px; width:100%;">
+    <div class="modal-header">
+      <div class="modal-title">Notifikasi</div>
+      <button class="modal-close" onclick="closeModal('modal-notif')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0; max-height:400px; overflow-y:auto; background:var(--bg);">
+      <div id="notif-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL CHAT ==================== -->
+<div class="modal-overlay" id="modal-chat">
+  <div class="modal" id="chat-modal-box" style="max-width:800px; width:100%; height:80vh; display:flex; flex-direction:column;">
+    <div class="modal-header">
+      <div class="modal-title">Chat Terintegrasi</div>
+      <button class="modal-close" onclick="closeModal('modal-chat')">✕</button>
+    </div>
+    <div class="modal-body chat-modal-body" style="flex:1; padding:0; display:flex; flex-direction:row; overflow:hidden;">
+      <!-- Contacts List -->
+      <div class="chat-modal-sidebar">
+         <div style="padding:16px; border-bottom:1px solid var(--border); background:#fff; display:flex; justify-content:space-between; align-items:center;">
+           <div class="section-title" style="font-size:14px;">Percakapan</div>
+           <button class="icon-btn" onclick="openNewChatList()" style="width:28px; height:28px; font-size:18px; border-radius:50%; background:var(--primary); color:white;" title="Chat Baru">+</button>
+         </div>
+         <div id="contact-list" class="contact-list-container" style="flex:1; overflow-y:auto; padding:12px;"></div>
+      </div>
+      <!-- Chat Area -->
+      <div class="chat-modal-main" style="flex:1; display:flex; flex-direction:column; background:#fff; min-height:0;">
+        <div style="padding:16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div class="section-title" id="chat-with" style="font-size:15px;">dr. Moslihin</div>
+            <div style="font-size:11px;color:var(--success);font-weight:600;"><span class="realtime-dot"></span>Online sekarang</div>
+          </div>
+        </div>
+        <div class="chat-list" id="chat-messages" style="padding:16px; flex:1; overflow-y:auto; background:var(--bg);"></div>
+        <div class="chat-input-area" style="padding:8px 12px; border-top:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; gap:8px;">
+          <input type="file" id="chat-file-input" style="display:none;" onchange="handleChatFileSelect(this)">
+          <button class="icon-btn" onclick="document.getElementById('chat-file-input').click()" style="width:32px; height:32px; font-size:16px;" title="Lampirkan file">📎</button>
+          <div id="chat-attachment-preview" style="display:none; align-items:center; gap:4px; background:var(--bg); padding:4px 8px; border-radius:8px; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px;">
+            <span id="chat-attachment-name"></span>
+            <button onclick="clearChatAttachment()" style="border:none; background:none; cursor:pointer; font-size:12px; padding:0 2px;">✕</button>
+          </div>
+          <input class="chat-input" id="chat-input" placeholder="Ketik pesan disini..." onkeypress="chatEnter(event)" style="margin:0; flex:1; padding:8px 12px; height:36px;">
+          <button class="send-btn" onclick="sendChat()" style="width:36px; height:36px; font-size:16px;">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETAIL PMO -->
+<div class="modal-overlay" id="modal-pmo-detail">
+  <div class="modal" style="max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="modal-header">
+      <div class="modal-title">Riwayat PMO: <span id="pmo-detail-name"></span></div>
+      <button class="modal-close" onclick="closeModal('modal-pmo-detail')">✕</button>
+    </div>
+    <div class="modal-body" style="overflow-y: auto; padding: 0;">
+      <!-- List of PMO records will go here -->
+      <div id="pmo-detail-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-stok">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Tambah / Update Stok Obat</div>
+      <button class="modal-close" onclick="closeModal('modal-stok')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nama Obat</label>
+        <input class="form-input" list="stok-nama-list" id="stok-nama-input" placeholder="Ketik atau pilih nama obat...">
+      </div>
+      <datalist id="stok-nama-list"></datalist>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Jumlah (tablet)</label><input class="form-input" type="number" id="stok-jumlah-input" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Stok Minimum</label><input class="form-input" type="number" id="stok-min-input" placeholder="50"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Kadaluarsa</label><input class="form-input" type="date" id="stok-exp-input"></div>
+        <div class="form-group"><label class="form-label">Pemasok</label><input class="form-input" id="stok-vendor-input" placeholder="Nama apotek/supplier"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="simpanStok()">Simpan Stok</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-jadwal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="jadwal-modal-title">Jadwalkan Antar-Jemput Obat</div>
+      <button class="modal-close" onclick="closeModal('modal-jadwal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" id="jadwal-form-pasien">
+        <label class="form-label">Pilih Pasien</label>
+        <input class="form-input" list="jadwal-pasien-list" id="jadwal-pasien-input" placeholder="Ketik nama pasien..." oninput="autoPopulateSchedule()">
+        <datalist id="jadwal-pasien-list"></datalist>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Tanggal</label><input class="form-input" type="date" id="jadwal-tgl"></div>
+        <div class="form-group"><label class="form-label">Jam</label><input class="form-input" type="time" value="09:00" id="jadwal-jam"></div>
+      </div>
+      <div class="form-group" id="jadwal-form-pendamping">
+        <label class="form-label" id="jadwal-label-pj">Nama Penerima (Pasien/Pendamping)</label>
+        <input class="form-input" list="jadwal-pj-list" id="jadwal-pj-input" placeholder="Ketik nama penerima...">
+        <datalist id="jadwal-pj-list"></datalist>
+      </div>
+      <div class="form-group" id="jadwal-form-alamat">
+        <label class="form-label" id="jadwal-label-alamat">Alamat Pengambilan / Pengantaran</label>
+        <textarea class="form-textarea" id="jadwal-alamat" placeholder="Alamat lengkap..."></textarea>
+      </div>
+      <div class="form-group" id="jadwal-form-tipe" style="display:none;">
+        <label class="form-label">Tipe Layanan</label>
+        <select class="form-select" id="jadwal-type-select">
+          <option value="antar">🚗 Pengantaran Obat (oleh Petugas)</option>
+          <option value="jemput">🚶 Penjemputan Obat (oleh Pendamping)</option>
+          <option value="stok_kritis">⚠️ Lapor Stok Menipis</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" id="jadwal-btn-simpan" onclick="simpanJadwal()">📅 Simpan Jadwal</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-detail-jadwal">
+  <div class="modal" style="max-width:500px; width:100%;">
+    <div class="modal-header">
+      <div class="modal-title" id="detail-jadwal-title">Jadwal Hari Ini</div>
+      <button class="modal-close" onclick="closeModal('modal-detail-jadwal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0; max-height:400px; overflow-y:auto; background:var(--bg);">
+      <div id="detail-jadwal-list" style="padding:16px;"></div>
+    </div>
+  </div>
+</div>
+
+  <!-- MODAL CONSULTATION -->
+  <div class="modal-overlay" id="modal-consultation">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">🩺 Kirim ke Dokter</div>
+        <button class="modal-close" onclick="closeModal('modal-consultation')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:15px; background:var(--bg); padding:12px; border-radius:12px; border:1px solid var(--border);">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:4px;">Pasien</div>
+          <div style="font-size:15px; font-weight:700; color:var(--primary);" id="cons-patient-name">-</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pilih Dokter Spesialis</label>
+          <select class="form-select" id="cons-doctor-select">
+            <option value="">Memuat daftar dokter...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Catatan Konsultasi / Keluhan</label>
+          <textarea class="form-textarea" id="cons-note" placeholder="Tuliskan alasan pengiriman atau catatan untuk dokter..."></textarea>
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:10px; padding:14px; font-weight:700;" onclick="simpanKonsultasi()">
+          🚀 Kirim ke Dokter Sekarang
+        </button>
+      </div>
+    </div>
+  </div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- ==================== CHART JS ==================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- ==================== FIREBASE SDK ==================== -->
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
+
+<!-- ==================== SCRIPTS ==================== -->
+<!-- Load order: config → data → ui → auth → pages → app -->
+<script src="js/firebase-config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/pages.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('Service Worker registered', reg))
+        .catch(err => console.log('Service Worker registration failed', err));
+    });
+  }
+</script>
+
+</body>
+</html>
