@@ -26,43 +26,7 @@ const DEFAULT_PATIENTS = [
   { id: 119, name: "Shanti Dwi", age: 31, gender: "P", diagnosis: "OCD", status: "monitor", pendamping: "Bapak Rudi Hartono", obat: "Paroxetine 20mg", pmo: 63, nik: "3526011905920001", alamat: "Desa Rosep", createdAt: "2026-02-20T10:15:00Z" },
 ];
 
-const DEFAULT_DRUGS = [
-  {
-    name: "Haloperidol 5mg",
-    stok: 45,
-    min: 50,
-    kadaluarsa: "2025-08",
-    pemasok: "Apotek Sehat",
-  },
-  {
-    name: "Lithium 400mg",
-    stok: 120,
-    min: 60,
-    kadaluarsa: "2026-03",
-    pemasok: "Apotek Maju",
-  },
-  {
-    name: "Clozapine 25mg",
-    stok: 30,
-    min: 40,
-    kadaluarsa: "2025-12",
-    pemasok: "Apotek Sehat",
-  },
-  {
-    name: "Fluoxetine 20mg",
-    stok: 200,
-    min: 80,
-    kadaluarsa: "2026-06",
-    pemasok: "Apotek Raya",
-  },
-  {
-    name: "Sertraline 50mg",
-    stok: 22,
-    min: 50,
-    kadaluarsa: "2026-01",
-    pemasok: "Apotek Maju",
-  },
-];
+const DEFAULT_DRUGS = [];
 
 const DEFAULT_PICKUPS = [];
 
@@ -172,7 +136,7 @@ async function resetDatabaseToEmpty(isSilent = false) {
     if (!isConfirmed) return;
   }
   
-  const collections = ["patients", "pickups", "notifs", "chats"];
+  const collections = ["patients", "pickups", "notifs", "chats", "drugs"];
   console.log("Starting database reset...");
   showToast("⏳ Sedang menghapus data...", "info");
   
