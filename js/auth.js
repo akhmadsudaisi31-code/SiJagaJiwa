@@ -12,7 +12,7 @@ const DEFAULT_USERS = [
   { role: 'pendamping', nama: 'Budi (Pendamping)', username: 'pendamping', password: 'password123', nik: '1234567890123456', hubungan: 'Keluarga', alamat: 'Jl. Merdeka No. 10', no_hp: '081234567890' },
   { role: 'petugas', nama: 'Sari (Petugas)', username: 'petugas', password: 'password123', nip: '198505202010012001', instansi: 'Puskesmas Kokop', no_hp: '081234567891' },
   { role: 'dokter', nama: 'dr. Moslihin', username: 'dokter', password: 'password123', nip: '197501012005011001', spesialisasi: 'Psikiater', no_hp: '081234567892' },
-  { role: 'pemegang', nama: 'Kemenkes (Program)', username: 'pemegang', password: 'password123', nip: '198003152008011002', instansi: 'Dinas Kesehatan', jabatan: 'Pemegang Program Jiwa', no_hp: '081234567893' },
+  { role: 'pemegang', nama: 'Iin Sriyanto', username: 'pemegang', password: 'password123', nip: '198003152008011002', instansi: 'Dinas Kesehatan', jabatan: 'Pemegang Program Jiwa', no_hp: '081234567893' },
   { role: 'admin', nama: 'Admin Utama', username: 'admin', password: 'password123', nip: '000000000000000000', instansi: 'Sistem', jabatan: 'Super Administrator', no_hp: '000000000000' },
   
   // 19 Regional Petugas (One per village)
@@ -59,6 +59,7 @@ const DEFAULT_USERS = [
 ];
 
 async function seedDefaultUsers() {
+  return; // Disabled
   if (localStorage.getItem('seed_v8')) return;
 
   console.log("Seeding default users (background)...");
@@ -106,7 +107,7 @@ const DUMMY_DOMAIN = "@sijiwa-login.com";
 
 async function registerUser(role, formData) {
   try {
-    const username = formData.username;
+    const username = formData.username.trim().toLowerCase();
     const dummyEmail = username + DUMMY_DOMAIN;
     const password = formData.password;
 
@@ -158,13 +159,14 @@ async function registerUser(role, formData) {
 
 async function loginUser(username, password) {
   try {
-    const dummyEmail = username + DUMMY_DOMAIN;
+    const normalizedUsername = username.trim().toLowerCase();
+    const dummyEmail = normalizedUsername + DUMMY_DOMAIN;
     
     // 1. Authenticate with Firebase Auth
     await auth.signInWithEmailAndPassword(dummyEmail, password);
 
     // 2. Fetch User Profile from Firestore to get Role and Details
-    const userDocRef = db.collection('users').doc(username);
+    const userDocRef = db.collection('users').doc(normalizedUsername);
     const doc = await userDocRef.get();
 
     if (!doc.exists) {
@@ -189,6 +191,7 @@ async function logoutUser() {
   try {
     await auth.signOut();
     if (typeof stopGlobalRealTimeSync === 'function') stopGlobalRealTimeSync();
+    if (typeof clearChatState === 'function') clearChatState();
     document.getElementById('app').classList.remove('show');
     document.getElementById('role-select').classList.remove('hide');
     document.getElementById('auth-page').classList.remove('show');

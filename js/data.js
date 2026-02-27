@@ -83,6 +83,7 @@ let GLOBAL_UNSUBSCRIBES = [];
 
 // Seed defaults to Firebase if empty
 async function seedDefaultData() {
+  return; // Disabled
   const collections = [
     { name: "patients", data: DEFAULT_PATIENTS },
     { name: "drugs", data: DEFAULT_DRUGS },
@@ -269,8 +270,6 @@ const ROLE_NAVS = {
     { icon: "🏠", label: "Dashboard", page: "dashboard" },
     { icon: "👥", label: "Pasien", page: "data-pasien" },
     { icon: "💬", label: "Chat", page: "chat" },
-    { icon: "🔔", label: "Notifikasi", page: "notifikasi" },
-    { icon: "⚙️", label: "Profil", page: "profil" },
   ],
   pemegang: [
     { icon: "🏠", label: "Dashboard", page: "dashboard" },
@@ -344,6 +343,8 @@ const REGISTER_FIELDS = {
         "Anak",
         "Saudara",
         "Kerabat",
+        "Kader",
+        "Perangkat Desa",
         "Lainnya",
       ],
       required: false,

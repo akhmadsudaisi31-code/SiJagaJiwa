@@ -11,8 +11,20 @@ function renderDashboardPatients() {
   
   if (currentRole === 'dokter') {
     displayPatients = PATIENTS.filter(p => p.assignedDoctorId === session?.username);
+  } else if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+    const userDesa = session?.desa || session?.alamat;
+    if (!userDesa) {
+      displayPatients = [];
+    } else {
+      const cleanUserDesa = userDesa.replace("Desa ", "").trim();
+      displayPatients = PATIENTS.filter(p => {
+        if (p.desa && session.desa && p.desa === session.desa) return true;
+        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
+      });
+    }
   }
   
+  if (!el) return;
   el.innerHTML = displayPatients.map(p => patientHTML(p)).join('') || '<div style="padding:20px;text-align:center;color:var(--text-muted);">Tidak ada pasien yang ditugaskan kepada Anda</div>';
 
   // Update Stats Widgets
@@ -41,9 +53,25 @@ function renderDashboardPatients() {
   const jemputTotalEl = document.getElementById('stat-jemput-total');
   const jemputChangeEl = document.getElementById('stat-jemput-change');
   if (jemputTotalEl) {
-    const totalPickups = PICKUPS.length;
+    let displayPickups = PICKUPS;
+    if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+      const userDesa = session?.desa || session?.alamat;
+      if (userDesa) {
+        const cleanUserDesa = userDesa.replace('Desa ', '').trim();
+        displayPickups = PICKUPS.filter(p => {
+          const patient = PATIENTS.find(pt => pt.name === p.patient);
+          if (!patient) return false;
+          if (patient.desa && session.desa && patient.desa === session.desa) return true;
+          return patient.alamat && (patient.alamat === "Desa " + cleanUserDesa || patient.alamat === cleanUserDesa);
+        });
+      } else {
+        displayPickups = [];
+      }
+    }
+
+    const totalPickups = displayPickups.length;
     const todayStr = new Date().toISOString().split('T')[0];
-    const todayPickups = PICKUPS.filter(p => p.date === 'Hari Ini' || p.date === todayStr).length;
+    const todayPickups = displayPickups.filter(p => p.date === 'Hari Ini' || p.date === todayStr).length;
     
     jemputTotalEl.textContent = totalPickups;
     if (jemputChangeEl) jemputChangeEl.textContent = todayPickups > 0 ? `${todayPickups} jadwal hari ini` : (totalPickups > 0 ? 'Tidak ada jadwal hari ini' : 'Belum ada jadwal');
@@ -81,9 +109,13 @@ function patientHTML(p) {
   </div>`;
 }
 
-function showPatientDetail(id) {
+async function showPatientDetail(id) {
   const p = PATIENTS.find(x => x.id === id);
   if (!p) return;
+  
+  // Show base detail first
+  showPage('patient-detail');
+  
   document.getElementById('detail-avatar').textContent = p.name.split(' ').map(w => w[0]).join('').slice(0, 2);
   document.getElementById('detail-name').textContent = p.name;
   document.getElementById('detail-meta').textContent = `${p.gender === 'L' ? 'Laki-laki' : 'Perempuan'}, ${p.age} tahun • ${p.diagnosis}`;
@@ -98,18 +130,63 @@ function showPatientDetail(id) {
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">3x sehari sesudah makan</div>
     </div>
   `;
-  document.getElementById('detail-pmo-status').innerHTML = `
-    <div style="margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-size:13px;font-weight:600;">Kepatuhan</span>
-        <span style="font-size:13px;font-weight:800;color:var(--primary);">${p.pmo}%</span>
+
+  // Fetch ALL PMO logs (all-time) for the patient
+  const detailPmoEl = document.getElementById('detail-pmo-status');
+  detailPmoEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--text-muted);">Memuat riwayat PMO...</div>';
+  
+  try {
+    const logsSnap = await db.collection('patients').doc(p.firebaseId).collection('pmo_logs')
+      .orderBy('timestamp', 'desc')
+      .get();
+    
+    const logs = [];
+    logsSnap.forEach(doc => logs.push(doc.data()));
+    currentPmoLogs = logs; // Store globally for click detail
+    
+    // Calculate today's compliance for the summary bar
+    const today = new Date().toISOString().split('T')[0];
+    const todayLogs = logs.filter(l => l.timestamp && l.timestamp.startsWith(today) && l.status === 'done');
+    const doneCount = todayLogs.length;
+    const compliance = p.pmo || Math.min(Math.round((doneCount / 3) * 100), 100);
+
+    detailPmoEl.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:13px;font-weight:600;">Kepatuhan Obat</span>
+          <span style="font-size:13px;font-weight:800;color:${compliance >= 80 ? 'var(--success)' : compliance >= 50 ? 'var(--warning)' : 'var(--danger)'};">${compliance}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${compliance}%;background:${compliance >= 80 ? 'var(--success)' : compliance >= 50 ? 'var(--warning)' : 'var(--danger)'}"></div></div>
       </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${p.pmo}%"></div></div>
-    </div>
-    <div class="report-row"><div class="report-label">Pagi</div><div class="report-val">✅ Sudah</div></div>
-    <div class="report-row"><div class="report-label">Siang</div><div class="report-val">✅ Sudah</div></div>
-    <div class="report-row"><div class="report-label">Malam</div><div class="report-val" style="color:var(--warning)">⏳ Belum</div></div>
-  `;
+      
+      <div>
+        <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px; letter-spacing:0.05em;">
+          📋 Riwayat PMO Lengkap (${logs.length} catatan)
+        </div>
+        ${logs.length === 0
+          ? '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:20px;">Belum ada catatan PMO untuk pasien ini</div>'
+          : logs.map((l, idx) => {
+              const date = l.timestamp ? l.timestamp.split('T')[0] : '-';
+              const statusColor = l.status === 'done' ? 'var(--success)' : 'var(--warning)';
+              const statusIcon = l.status === 'done' ? '✅' : '⏳';
+              return `
+                <div onclick="showPmoLogDetail(${idx})" style="padding:10px 12px; background:var(--bg); border-radius:10px; margin-bottom:8px; font-size:12px; border-left:3px solid ${statusColor}; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-weight:700; color:var(--text-dark);">${statusIcon} ${l.recordedBy || 'Petugas'}</span>
+                    <span style="font-size:11px; color:var(--text-muted);">${date} • ${l.waktu || '-'} ›</span>
+                  </div>
+                  <div style="color:var(--text-muted); font-size:11px; margin-top:2px;">${l.recorderRole ? '(' + l.recorderRole + ')' : ''} ${l.catatan || 'Mencatat konsumsi obat'}</div>
+                </div>
+              `;
+            }).join('')
+        }
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("Failed to fetch PMO logs", err);
+    detailPmoEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:11px; color:var(--danger);">Gagal memuat riwayat PMO</div>';
+  }
 
   // Role-based action buttons
   const editBtn = document.getElementById('btn-edit-pasien');
@@ -121,8 +198,31 @@ function showPatientDetail(id) {
   if (editBtn) editBtn.style.display = hasFullAccess ? 'block' : 'none';
   if (deleteBtn) deleteBtn.style.display = (currentRole === 'pemegang' || currentRole === 'admin') ? 'block' : 'none';
   if (consBtn) consBtn.style.display = (currentRole === 'pemegang' || currentRole === 'admin') ? 'block' : 'none';
+}
 
-  showPage('patient-detail');
+// Global store for PMO log click detail
+let currentPmoLogs = [];
+
+function showPmoLogDetail(idx) {
+  const l = currentPmoLogs[idx];
+  if (!l) return;
+
+  const date = l.timestamp ? l.timestamp.split('T')[0] : '-';
+  const statusColor = l.status === 'done' ? 'var(--success)' : '#f97316';
+  const statusLabel = l.status === 'done' ? '✅ Sudah Dikonsumsi' : '⏳ Belum Dikonsumsi';
+  
+  // Populate modal
+  const modal = document.getElementById('modal-pmo-detail');
+  document.getElementById('pmo-detail-status').textContent = statusLabel;
+  document.getElementById('pmo-detail-status').style.color = statusColor;
+  document.getElementById('pmo-detail-date').textContent = date;
+  document.getElementById('pmo-detail-time').textContent = l.waktu || '-';
+  document.getElementById('pmo-detail-recorded-by').textContent = l.recordedBy || 'Petugas';
+  document.getElementById('pmo-detail-role').textContent = l.recorderRole || '-';
+  document.getElementById('pmo-detail-catatan').textContent = l.catatan || 'Mencatat konsumsi obat';
+  document.getElementById('pmo-detail-obat').textContent = l.obat || '-';
+  
+  openModal('modal-pmo-detail');
 }
 
 function renderDashboardPMO() {
@@ -131,22 +231,101 @@ function renderDashboardPMO() {
   // Group by patient to show patient-centric view
   let patientsWithPmo = PATIENTS.filter(p => p.obat); 
   
+  if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+    const userDesa = session?.desa || session?.alamat;
+    if (!userDesa) {
+      patientsWithPmo = [];
+    } else {
+      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
+      patientsWithPmo = patientsWithPmo.filter(p => {
+        if (p.desa && session.desa && p.desa === session.desa) return true;
+        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
+      });
+    }
+  }
+  
   el.innerHTML = patientsWithPmo.slice(0, 4).map(p => {
-    const doneCount = (p.pmo_sessions || [false, false, false]).filter(c => c).length;
     return `
       <div class="pmo-item" onclick="viewPmoDetails('${p.name}')">
-        <div class="pmo-avatar" style="background:var(--primary-light);color:var(--primary);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">${p.name[0]}</div>
-        <div style="flex:1; margin-left:12px;">
-          <div class="pmo-patient" style="font-weight:700;font-size:13px;">${p.name}</div>
-          <div class="pmo-drug" style="font-size:11px;color:var(--text-muted);">${p.obat}</div>
+        <div class="pmo-avatar" style="background:var(--primary-light);color:var(--primary);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">${p.name[0]}</div>
+        <div style="flex:1; margin-left:14px;">
+          <div class="pmo-patient" style="font-weight:700;font-size:13px;color:var(--text-dark);">${p.name}</div>
+          <div class="pmo-drug" style="font-size:11px;color:var(--text-muted);margin-top:2px;">📋 ${p.diagnosis || '-'}</div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:12px;font-weight:800;color:var(--primary);">${doneCount}/3</div>
-          <div style="font-size:10px;color:var(--text-muted);">Dosis Hari Ini</div>
+          <button class="btn btn-ghost" style="font-size:10px; padding:4px 8px; border-radius:6px; border:1px solid var(--border);">Riwayat</button>
         </div>
       </div>
     `;
   }).join('') || '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">Belum ada jadwal PMO</div>';
+}
+
+async function renderDashboardGejalaBaru() {
+  const el = document.getElementById('dashboard-gejala-baru');
+  if (!el || (currentRole !== 'pemegang' && currentRole !== 'admin')) return;
+
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">⌛ Memuat data...</div>';
+
+  try {
+    const patientsWithId = PATIENTS.filter(p => p.firebaseId);
+    let allGejalaLogs = [];
+
+    const pmoResults = await Promise.all(
+      patientsWithId.map(p => db.collection('patients').doc(p.firebaseId).collection('pmo_logs').orderBy('timestamp', 'desc').limit(5).get().then(snap => {
+        return { patient: p, snap };
+      }).catch(() => null))
+    );
+
+    pmoResults.forEach(result => {
+      if (!result) return;
+      result.snap.forEach(doc => {
+        const log = doc.data();
+        if (log.recorderRole === 'petugas' && (log.gejala || log.catatan)) {
+          allGejalaLogs.push({
+            patient: result.patient,
+            log: log
+          });
+        }
+      });
+    });
+
+    // Sort by most recent
+    allGejalaLogs.sort((a, b) => new Date(b.log.timestamp) - new Date(a.log.timestamp));
+    
+    // Take top 5 unique patients to avoid clutter
+    const uniqueGejala = [];
+    const seenPatients = new Set();
+    for(const item of allGejalaLogs) {
+      if(!seenPatients.has(item.patient.firebaseId)) {
+        uniqueGejala.push(item);
+        seenPatients.add(item.patient.firebaseId);
+        if(uniqueGejala.length >= 5) break;
+      }
+    }
+
+    el.innerHTML = uniqueGejala.map(g => {
+      const dateStr = new Date(g.log.timestamp).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', hour:'2-digit', minute:'2-digit'});
+      const gejalaText = g.log.gejala ? `<span style="color:var(--danger);font-weight:600;">Gejala: ${g.log.gejala}</span>` : '';
+      const catatanText = g.log.catatan ? `<span style="color:var(--warning);font-weight:600;">Catatan: ${g.log.catatan}</span>` : '';
+      
+      return `
+        <div class="pmo-item" onclick="viewPmoDetails('${g.patient.name}')" style="cursor:pointer; border-left: 3px solid var(--danger);">
+          <div class="pmo-avatar" style="background:#fee2e2;color:var(--danger);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">${g.patient.name[0]}</div>
+          <div style="flex:1; margin-left:14px;">
+            <div class="pmo-patient" style="font-weight:700;font-size:13px;color:var(--text-dark);">${g.patient.name}</div>
+            <div class="pmo-drug" style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              ${gejalaText} ${gejalaText && catatanText ? '<br>' : ''} ${catatanText}
+            </div>
+            <div style="font-size:9px;color:var(--text-muted);margin-top:6px;">Dilaporkan oleh ${g.log.recordedBy} (${dateStr})</div>
+          </div>
+        </div>
+      `;
+    }).join('') || '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">✅ Tidak ada laporan gejala baru dari petugas</div>';
+
+  } catch (e) {
+    console.warn("Failed to fetch new symptoms:", e);
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);font-size:12px;">Gagal memuat data gejala</div>';
+  }
 }
 
 function togglePMO(btn, i) {
@@ -157,7 +336,7 @@ function togglePMO(btn, i) {
 
 let dashboardChartInstance = null;
 
-function renderBarChart() {
+async function renderBarChart() {
   const ctx = document.getElementById('dashboardChart');
   if (!ctx || !window.Chart) return;
 
@@ -165,9 +344,59 @@ function renderBarChart() {
     dashboardChartInstance.destroy();
   }
 
-  const days = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
-  const barData = [18, 24, 20, 31, 27, 15, 22]; // Kunjungan
-  const lineData = [150, 155, 152, 160, 158, 145, 147]; // Total Pasien Aktif (contoh tren)
+  // Generate last 7 days labels
+  const days = [];
+  const barData = [0, 0, 0, 0, 0, 0, 0];
+  const lineData = [0, 0, 0, 0, 0, 0, 0];
+  
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(d.toLocaleDateString('id-ID', { weekday: 'short' }));
+    
+    // Count total patients generated until this day
+    lineData[6 - i] = PATIENTS.filter(p => !p.createdAt || new Date(p.createdAt) <= d).length || PATIENTS.length;
+    
+    // Count Pickups (Jadwal) on this day
+    const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+    const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+    
+    const dayPickups = PICKUPS.filter(p => {
+       const pDate = new Date(p.date || p.createdAt);
+       return pDate >= dayStart && pDate <= dayEnd;
+    }).length;
+    
+    barData[6 - i] += dayPickups;
+  }
+
+  // Fetch PMO Logs for the last 7 days across all patients
+  const patientsWithId = PATIENTS.filter(p => p.firebaseId);
+  try {
+    const pmoResults = await Promise.all(
+      patientsWithId.map(p => db.collection('patients').doc(p.firebaseId).collection('pmo_logs').get())
+    );
+    
+    pmoResults.forEach(snap => {
+      snap.forEach(doc => {
+        const log = doc.data();
+        if (!log.timestamp) return;
+        const logDate = new Date(log.timestamp);
+        
+        // Find which day bucket it belongs to
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - (6 - i));
+          if (logDate.getDate() === d.getDate() && logDate.getMonth() === d.getMonth() && logDate.getFullYear() === d.getFullYear()) {
+             barData[i]++;
+             break;
+          }
+        }
+      });
+    });
+  } catch (e) {
+    console.warn("Failed to fetch PMO logs for chart", e);
+  }
 
   dashboardChartInstance = new Chart(ctx, {
     type: 'bar',
@@ -185,7 +414,7 @@ function renderBarChart() {
           yAxisID: 'y1'
         },
         {
-          label: 'Kunjungan',
+          label: 'Kunjungan (PMO & Jadwal)',
           data: barData,
           backgroundColor: 'rgba(54, 162, 235, 0.6)',
           borderRadius: 6,
@@ -204,13 +433,15 @@ function renderBarChart() {
           beginAtZero: true,
           position: 'left',
           grid: { display: false },
-          title: { display: true, text: 'Kunjungan', font: { size: 10 } }
+          title: { display: true, text: 'Kunjungan', font: { size: 10 } },
+          ticks: { stepSize: 1 }
         },
         y1: {
-          beginAtZero: false,
+          beginAtZero: true,
           position: 'right',
           grid: { display: false },
-          title: { display: true, text: 'Total', font: { size: 10 } }
+          title: { display: true, text: 'Total', font: { size: 10 } },
+          ticks: { stepSize: 1 }
         }
       }
     }
@@ -244,12 +475,23 @@ async function renderFullPatients() {
   
   if (currentRole === 'dokter') {
     displayPatients = PATIENTS.filter(p => p.assignedDoctorId === session?.username);
+  } else if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+    const userDesa = session?.desa || session?.alamat;
+    if (!userDesa) {
+      displayPatients = [];
+    } else {
+      const cleanUserDesa = userDesa.replace("Desa ", "").trim();
+      displayPatients = PATIENTS.filter(p => {
+        if (p.desa && session.desa && p.desa === session.desa) return true;
+        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
+      });
+    }
   }
   
   if (el) el.innerHTML = displayPatients.map(p => patientHTML(p)).join('');
   
   if (pmoPasienList) {
-    pmoPasienList.innerHTML = PATIENTS.map(p => `<option value="${p.name}">`).join('');
+    pmoPasienList.innerHTML = displayPatients.map(p => `<option value="${p.name}">`).join('');
   }
   if (pmoObatList) {
     pmoObatList.innerHTML = DRUGS.map(d => `<option value="${d.name}">`).join('');
@@ -263,7 +505,7 @@ async function renderFullPatients() {
   
   const jadwalList = document.getElementById('jadwal-pasien-list');
   if (jadwalList) {
-    jadwalList.innerHTML = PATIENTS.map(p => `<option value="${p.name}">`).join('');
+    jadwalList.innerHTML = displayPatients.map(p => `<option value="${p.name}">`).join('');
   }
 
   // Populate Caregiver Datalist for Schedule
@@ -316,29 +558,31 @@ function renderPMOFull() {
   const el = document.getElementById('pmo-full-list');
   const el2 = document.getElementById('pmo-compliance');
   let displayPatients = PATIENTS;
+  
+  if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+    const userDesa = session?.desa || session?.alamat;
+    if (!userDesa) {
+      displayPatients = [];
+    } else {
+      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
+      displayPatients = PATIENTS.filter(p => {
+        if (p.desa && session.desa && p.desa === session.desa) return true;
+        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
+      });
+    }
+  }
 
   // Broadened Visibility (as requested): Show ALL patients in Monitor PMO
 
-  const items = displayPatients.map(p => ({
-    patient: p.name, drug: p.obat, pmo: p.pmo,
-    sessions: ['Pagi', 'Siang', 'Malam'],
-    checks: p.pmo_sessions || [false, false, false]
-  }));
-
-  el.innerHTML = items.map((item, i) => `
-    <div style="padding:12px 0;border-bottom:1px solid var(--border);">
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-        <div style="font-size:13px;font-weight:700;">${item.patient}</div>
-        <button class="btn btn-ghost" style="padding:4px 8px; font-size:11px;" onclick="viewPmoDetails('${item.patient}')">Lihat Riwayat</button>
-      </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">💊 ${item.drug}</div>
-      <div style="display:flex;gap:8px;">
-        ${item.sessions.map((s, j) => `
-          <div style="flex:1;text-align:center;padding:6px;border-radius:8px;background:${item.checks[j] ? '#d1fae5' : '#fee2e2'};">
-            <div style="font-size:10px;font-weight:700;color:${item.checks[j] ? '#065f46' : '#991b1b'}">${s}</div>
-            <div style="font-size:16px;">${item.checks[j] ? '✅' : '❌'}</div>
-          </div>
-        `).join('')}
+  el.innerHTML = displayPatients.map((p, i) => `
+    <div style="padding:16px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:var(--text-dark);">${p.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📋 Diagnosis: ${p.diagnosis || '-'}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">💊 Obat Utama: ${p.obat || '-'}</div>
+        </div>
+        <button class="btn btn-ghost" style="padding:8px 16px; font-size:12px; border:1px solid var(--border); border-radius:10px; font-weight:600;" onclick="viewPmoDetails('${p.name}')">🔍 Lihat Riwayat</button>
       </div>
     </div>
   `).join('');
@@ -356,27 +600,30 @@ function renderPMOFull() {
 
 // ============ CHAT ============
 // ============ CHAT ============
+let globalChatContacts = [];
+
 async function renderChat() {
   const session = getCurrentSession();
   if (!session) return;
   
-  const contactEl = document.getElementById('contact-list');
+  const contactEl = document.getElementById('chat-contact-list');
   contactEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--text-muted);">Memuat riwayat chat...</div>';
+  
+  showContactList();
 
   try {
-    // 1. Get all chats where user is a participant
-    // Remove orderBy from Firestore query to avoid needing a composite index
     const snapshot = await db.collection('chats')
       .where('participants', 'array-contains', session.username)
       .get();
     
     if (snapshot.empty) {
+      globalChatContacts = [];
       contactEl.innerHTML = `
         <div style="padding:40px 20px; text-align:center;">
           <div style="font-size:32px; margin-bottom:12px;">💬</div>
-          <div style="font-size:13px; font-weight:700; color:var(--text-dark);">Belum ada percakapan</div>
+          <div style="font-size:13px; font-weight:700; color:var(--text);">Belum ada percakapan</div>
           <div style="font-size:11px; color:var(--text-muted); margin-top:4px; margin-bottom:16px;">Mulai chat baru dengan menekan tombol + di atas</div>
-          <button class="btn btn-sm" onclick="openNewChatList()" style="background:var(--primary); color:white; padding:6px 16px; border-radius:20px;">Mulai Chat</button>
+          <button class="btn btn-sm" onclick="openNewChatList()" style="background:var(--navy); color:white; padding:6px 16px; border-radius:20px;">Mulai Chat</button>
         </div>
       `;
       return;
@@ -384,64 +631,59 @@ async function renderChat() {
 
     const chatDocs = [];
     snapshot.forEach(doc => chatDocs.push({ id: doc.id, ...doc.data() }));
+    chatDocs.sort((a, b) => (b.lastUpdated?.toDate?.() || 0) - (a.lastUpdated?.toDate?.() || 0));
 
-    // Sort in-memory instead of Firestore orderBy
-    chatDocs.sort((a, b) => {
-      const timeA = a.lastUpdated?.toDate?.() || new Date(0);
-      const timeB = b.lastUpdated?.toDate?.() || new Date(0);
-      return timeB - timeA;
+    globalChatContacts = chatDocs.map(chat => {
+      const otherId = chat.participants.find(p => p !== session.username);
+      const otherName = chat.participantNames?.[otherId] || otherId;
+      const snippet = chat.lastSnippet || 'Mulai percakapan...';
+      const time = chat.lastUpdated ? chat.lastUpdated.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      return { id: otherId, name: otherName, snippet, time, type: 'history' };
     });
 
-    // 2. Fetch user profiles for participants to display names/details
-    const historyHtml = chatDocs.map(chat => {
-      const otherId = chat.participants.find(p => p !== session.username);
-      const lastMsg = chat.messages ? chat.messages[chat.messages.length - 1] : null;
-      
-      // Resolve other participant's name:
-      // 1. Check if we stored it in participantNames metadata
-      // 2. Check any message history for the other user's name
-      // 3. Fallback to username
-      const otherName = chat.participantNames?.[otherId] || 
-                        (chat.messages || []).find(m => m.senderId === otherId)?.senderName || 
-                        otherId;
-      
-      const snippet = lastMsg ? (lastMsg.text.slice(0, 40) + (lastMsg.text.length > 40 ? '...' : '')) : 'Pesan baru...';
-      const time = lastMsg ? lastMsg.time : '';
-      
-      return `
-        <div class="patient-item chat-history-item ${selectedContactId === otherId ? 'active' : ''}" style="margin-bottom:8px; cursor:pointer;" onclick="selectContact('${otherId}', '${otherName}')">
-          <div class="p-avatar" style="font-size:18px;background:var(--primary-light);color:var(--primary);">${otherName.charAt(0)}</div>
-          <div class="p-info" style="min-width:0;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div class="p-name" style="font-size:13px; font-weight:700;">${otherName}</div>
-              <div style="font-size:10px; color:var(--text-muted);">${time}</div>
-            </div>
-            <div style="font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${snippet}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    contactEl.innerHTML = historyHtml;
-    
-    if (!selectedContactId && chatDocs.length > 0) {
-      const firstChat = chatDocs[0];
-      const otherId = firstChat.participants.find(p => p !== session.username);
-      const lastMsg = firstChat.messages ? firstChat.messages[firstChat.messages.length - 1] : null;
-      const otherName = lastMsg?.senderName || otherId;
-      selectContact(otherId, otherName);
-    }
+    renderFilteredContacts(globalChatContacts);
   } catch (err) {
     console.error("Failed to render chat history", err);
     contactEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--danger);">Gagal memuat riwayat</div>';
   }
 }
 
+function renderFilteredContacts(contacts) {
+  const contactEl = document.getElementById('chat-contact-list');
+  if (contacts.length === 0) {
+    contactEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--text-muted);">Tidak ada kontak ditemukan</div>';
+    return;
+  }
+
+  contactEl.innerHTML = contacts.map(c => `
+    <div class="contact-item" onclick="selectContact('${c.id}', '${c.name}')">
+      <div class="header-avatar" style="font-size:14px; width:46px; height:46px; flex-shrink:0;">${c.name.charAt(0)}</div>
+      <div class="c-info" style="min-width:0; flex:1;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="c-name" style="font-size:14px; font-weight:700; color:var(--text);">${c.name}</div>
+          <div class="c-time" style="font-size:11px; color:var(--text-muted);">${c.time || ''}</div>
+        </div>
+        <div class="c-preview" style="font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px;">${c.snippet || ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterChatContacts(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) {
+    renderFilteredContacts(globalChatContacts);
+    return;
+  }
+  const filtered = globalChatContacts.filter(c => c.name.toLowerCase().includes(q));
+  renderFilteredContacts(filtered);
+}
+
 async function openNewChatList() {
   const session = getCurrentSession();
   if (!session) return;
   
-  const contactEl = document.getElementById('contact-list');
+  const contactEl = document.getElementById('chat-contact-list');
   contactEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--text-muted);">Memuat kontak...</div>';
 
   try {
@@ -456,185 +698,290 @@ async function openNewChatList() {
     
     const contacts = [];
     snapshot.forEach(doc => {
-      const u = doc.data();
-      if (u.username !== session.username) {
-        contacts.push({ id: doc.id, ...u });
-      }
+      if (doc.data().username !== session.username) contacts.push(doc.data());
     });
 
     if (contacts.length === 0) {
-      contactEl.innerHTML = `
-        <div style="padding:20px; text-align:center;">
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Tidak ada kontak tersedia</div>
-          <button class="btn btn-xs" onclick="renderChat()" style="background:var(--bg-muted); font-size:10px;">Kembali</button>
-        </div>
-      `;
+      contactEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">Tidak ada kontak tersedia</div>';
       return;
     }
 
+    globalChatContacts = contacts.map(c => ({
+      id: c.username,
+      name: c.nama,
+      snippet: ROLE_INFO[c.role]?.label || c.role,
+      time: '',
+      type: 'new'
+    }));
+
     contactEl.innerHTML = `
-      <div style="padding:4px 8px 12px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); margin-bottom:12px;">
-         <span style="font-size:11px; font-weight:700; color:var(--text-muted);">Mulai Chat Baru</span>
-         <button onclick="renderChat()" style="border:none; background:none; color:var(--primary); font-size:10px; cursor:pointer;">Batal</button>
+      <div style="padding:10px 16px; border-bottom:1px solid var(--border); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; font-weight:700;">Mulai Chat Baru</span>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="renderChat()">Batal</button>
       </div>
-      ${contacts.map(c => `
-        <div class="patient-item" style="margin-bottom:8px; border-bottom:1px solid #f9f9f9;" onclick="selectContact('${c.username}', '${c.nama}')">
-          <div class="p-avatar" style="font-size:20px;background:linear-gradient(135deg,#f77f00,#fcbf49);">${c.nama.charAt(0)}</div>
-          <div class="p-info">
-            <div class="p-name">${c.nama}</div>
-            <div class="p-meta">${ROLE_INFO[c.role]?.label || c.role}</div>
+      <div id="new-contact-list-inner">
+        ${globalChatContacts.map(c => `
+          <div class="contact-item" onclick="selectContact('${c.id}', '${c.name}')">
+            <div class="header-avatar" style="font-size:14px; width:44px; height:44px; background:linear-gradient(135deg, #f77f00, #fcbf49);">${c.name.charAt(0)}</div>
+            <div class="c-info">
+              <div class="c-name">${c.name}</div>
+              <div class="c-preview">${c.snippet}</div>
+            </div>
           </div>
-        </div>
-      `).join('')}
+        `).join('')}
+      </div>
     `;
   } catch (err) {
-    console.error("Failed to load users for new chat", err);
-    contactEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--danger);">Gagal memuat kontak</div>';
+    contactEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--danger);">Gagal memuat kontak</div>';
   }
 }
 
 let selectedContactId = null;
 let selectedContactName = "";
 let currentChatAttachment = null;
+let chatUnsubscribe = null;
+
+// Helper to compress image before base64 (Max ~600KB base64)
+async function compressImage(file, quality = 0.7, maxWidth = 1024) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+    };
+  });
+}
 
 function handleChatFileSelect(input) {
-  if (!input.files || !input.files[0]) return;
+  if (!input || !input.files || !input.files[0]) return;
   const file = input.files[0];
   
+  // New Limits: 10MB for images (will be compressed), 800KB for other files
+  const isImage = file.type.startsWith('image/');
+  const maxSize = isImage ? 10 * 1024 * 1024 : 800 * 1024;
+
+  if (file.size > maxSize) {
+    showToast(`❌ File terlalu besar (Maks ${isImage ? '10MB untuk gambar' : '800KB'})`, 'error');
+    input.value = '';
+    return;
+  }
+
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
+    let finalData = e.target.result;
+    
+    if (isImage) {
+      // Show local preview immediately if possible, but we wait for compression for actual data
+      const nameEl = document.getElementById('chat-attachment-name');
+      const previewEl = document.getElementById('chat-attachment-preview');
+      if (nameEl) nameEl.textContent = "⏳ Mengompres...";
+      if (previewEl) previewEl.style.display = 'flex';
+      
+      finalData = await compressImage(file);
+    }
+
     currentChatAttachment = {
       name: file.name,
       type: file.type,
-      data: e.target.result
+      data: finalData
     };
-    document.getElementById('chat-attachment-name').textContent = file.name;
-    document.getElementById('chat-attachment-preview').style.display = 'flex';
+
+    const nameEl = document.getElementById('chat-attachment-name');
+    const previewEl = document.getElementById('chat-attachment-preview');
+    if (nameEl) nameEl.textContent = file.name;
+    if (previewEl) previewEl.style.display = 'flex';
   };
   reader.readAsDataURL(file);
 }
 
 function clearChatAttachment() {
   currentChatAttachment = null;
-  document.getElementById('chat-file-input').value = '';
-  document.getElementById('chat-attachment-preview').style.display = 'none';
+  const fileInput = document.getElementById('chat-file-input');
+  const previewEl = document.getElementById('chat-attachment-preview');
+  if (fileInput) fileInput.value = '';
+  if (previewEl) previewEl.style.display = 'none';
+}
+
+function clearChatState() {
+  selectedContactId = null;
+  selectedContactName = "";
+  if (chatUnsubscribe) {
+    chatUnsubscribe();
+    chatUnsubscribe = null;
+  }
+  clearChatAttachment();
+  globalChatContacts = [];
+}
+
+function showContactList() {
+  const searchInput = document.querySelector('#chat-contact-view input[type="text"]');
+  if (searchInput) searchInput.value = '';
+  
+  // Clear any active chat subscription when returning to list
+  if (chatUnsubscribe) {
+    chatUnsubscribe();
+    chatUnsubscribe = null;
+  }
+  selectedContactId = null;
+
+  document.getElementById('chat-contact-view').style.display = 'flex';
+  document.getElementById('chat-active-view').style.display = 'none';
+  document.getElementById('chat-back-btn').style.display = 'none';
+  document.getElementById('chat-header-avatar').style.display = 'none';
+  document.getElementById('chat-header-name').textContent = 'Chat Terintegrasi';
+  document.getElementById('chat-header-status').style.display = 'none';
 }
 
 function selectContact(id, name) {
   selectedContactId = id;
   selectedContactName = name;
-  document.getElementById('chat-with').textContent = name;
-  loadChat(id);
-  // Refresh history list to show active state
-  renderChat();
-}
-
-function getConversationId(id1, id2) {
-  return [id1, id2].sort().join('_');
-}
-
-function loadChat(otherId) {
   const session = getCurrentSession();
-  if (!session) return;
   
-  const conversationId = getConversationId(session.username, otherId);
+  document.getElementById('chat-back-btn').style.display = 'block';
+  document.getElementById('chat-avatar-text').textContent = name.charAt(0);
+  document.getElementById('chat-header-avatar').style.display = 'flex';
+  document.getElementById('chat-header-name').textContent = name;
+  document.getElementById('chat-header-status').style.display = 'block';
   
-  // Unsubscribe old listener
-  if (window.CHAT_UNSUBSCRIBE) window.CHAT_UNSUBSCRIBE();
-  
-  const chatMessagesEl = document.getElementById('chat-messages');
-  chatMessagesEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--text-muted);">Memulai percakapan...</div>';
+  document.getElementById('chat-contact-view').style.display = 'none';
+  document.getElementById('chat-active-view').style.display = 'flex';
 
-  window.CHAT_UNSUBSCRIBE = db.collection('chats').doc(conversationId).onSnapshot(doc => {
-    const data = doc.data();
-    const msgs = data ? (data.messages || []) : [];
-    
-    chatMessagesEl.innerHTML = msgs.map(m => {
-      let attachmentHtml = '';
-      if (m.attachment) {
-        if (m.attachment.type.startsWith('image/')) {
-          attachmentHtml = `<div style="margin-top:8px;"><img src="${m.attachment.data}" style="max-width:100%; border-radius:8px; cursor:pointer;" onclick="window.open('${m.attachment.data}')"></div>`;
-        } else {
-          attachmentHtml = `<div style="margin-top:8px;"><a href="${m.attachment.data}" download="${m.attachment.name}" style="color:inherit; text-decoration:underline; font-size:12px;">📎 ${m.attachment.name}</a></div>`;
-        }
-      }
-      
-      return `
-        <div class="chat-msg ${m.senderId === session.username ? 'mine' : ''}">
-          <div class="chat-bubble">
-            ${m.text}
-            ${attachmentHtml}
-          </div>
-          <div class="chat-time">${m.time}</div>
-        </div>
-      `;
-    }).join('');
-    
-    if (msgs.length === 0) {
-      chatMessagesEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--text-muted);">Belum ada pesan. Say hello! 👋</div>';
-    }
-    
-    chatMessagesEl.scrollTop = 9999;
-  }, err => {
-    console.error("Chat listener error:", err);
-    chatMessagesEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--danger);">Gagal memuat pesan</div>';
-  });
+  const normalizedMyId = session.username.trim().toLowerCase();
+  const normalizedOtherId = id.trim().toLowerCase();
+  const chatId = [normalizedMyId, normalizedOtherId].sort().join('_');
+  
+  if (chatUnsubscribe) chatUnsubscribe();
+  
+  // Real-time listener for the messages subcollection
+  chatUnsubscribe = db.collection('chats').doc(chatId).collection('messages')
+    .orderBy('timestamp', 'asc')
+    .onSnapshot(snapshot => {
+      const messages = [];
+      snapshot.forEach(doc => messages.push(doc.data()));
+      renderMessages(messages);
+    }, err => {
+      console.error("Chat subcollection error", err);
+      renderMessages([]);
+    });
 }
 
-function chatEnter(e) {
-  if (e.key === 'Enter') sendChat();
+function renderMessages(msgs) {
+  const scroll = document.getElementById('chat-messages-scroll');
+  const session = getCurrentSession();
+  
+  if (msgs.length === 0) {
+    scroll.innerHTML = `
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); padding:40px 0;">
+        <div style="font-size:32px; margin-bottom:12px;">💬</div>
+        <div style="font-size:13px; font-weight:700; color:var(--text);">Belum ada percakapan</div>
+        <div style="font-size:11px;">Ketik pesan di bawah untuk memulai</div>
+      </div>
+    `;
+    return;
+  }
+
+  scroll.innerHTML = msgs.map((m, i) => {
+    const isMe = m.senderId === session.username;
+    const isSameSender = i > 0 && msgs[i-1].senderId === m.senderId;
+    
+    let attachmentHtml = '';
+    if (m.attachment) {
+      if (m.attachment.type.startsWith('image/')) {
+        attachmentHtml = `<div style="margin-top:8px;"><img src="${m.attachment.data}" style="max-width:100%; border-radius:8px; cursor:pointer;" onclick="window.open('${m.attachment.data}')"></div>`;
+      } else {
+        attachmentHtml = `<div style="margin-top:8px;"><a href="${m.attachment.data}" download="${m.attachment.name}" style="color:inherit; text-decoration:underline; font-size:12px;">📎 ${m.attachment.name}</a></div>`;
+      }
+    }
+
+    return `
+      <div class="msg-row ${isMe ? 'me' : 'them'}" style="${isSameSender ? 'margin-top:-4px;' : 'margin-top:10px;'}">
+        <div class="bubble">
+          ${m.text}
+          ${attachmentHtml}
+          <div class="bubble-time" style="text-align:${isMe ? 'right' : 'left'}">${m.time}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  scroll.scrollTop = scroll.scrollHeight;
 }
 
 async function sendChat() {
-  const session = getCurrentSession();
-  if (!session || !selectedContactId) return;
-
-  const input = document.getElementById('chat-input');
+  const input = document.getElementById('chat-textarea');
+  const btn = document.querySelector('.input-area button.icon-btn');
   const text = input.value.trim();
-  if (!text) return;
+  
+  if (!text && !currentChatAttachment) return;
+  if (!selectedContactId) return;
 
+  const session = getCurrentSession();
+  const normalizedMyId = session.username.trim().toLowerCase();
+  const normalizedOtherId = selectedContactId.trim().toLowerCase();
+  const chatId = [normalizedMyId, normalizedOtherId].sort().join('_');
+  
   const now = new Date();
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-  
-  const conversationId = getConversationId(session.username, selectedContactId);
-  const newMsg = { 
-    senderId: session.username, 
-    senderName: session.nama, 
-    text: text, 
-    time: time,
+
+  const message = {
+    senderId: session.username,
+    senderName: session.nama,
+    text, time,
     timestamp: new Date().toISOString(),
     attachment: currentChatAttachment
   };
 
-  input.value = '';
-  clearChatAttachment();
-
   try {
-    await db.collection('chats').doc(conversationId).set({
-      messages: firebase.firestore.FieldValue.arrayUnion(newMsg),
-      lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+    // Show sending state
+    const originalBtn = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span style="font-size:10px;">⌛</span>';
+    
+    // 1. Add message to subcollection
+    await db.collection('chats').doc(chatId).collection('messages').add(message);
+    
+    // 2. Update parent chat document metadata
+    await db.collection('chats').doc(chatId).set({
       participants: [session.username, selectedContactId],
-      lastSenderName: session.nama,
-      participantNames: {
-        [session.username]: session.nama,
-        [selectedContactId]: selectedContactName
-      }
+      participantNames: { [session.username]: session.nama, [selectedContactId]: selectedContactName },
+      lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+      lastSnippet: text || '📎 Lampiran file',
+      lastSender: session.username
     }, { merge: true });
 
-    // Create Notification for recipient
-    await db.collection('notifs').add({
-      title: 'Pesan Baru',
-      desc: `Pesan dari ${session.nama}: "${text.slice(0, 30)}${text.length > 30 ? '...' : ''}"`,
-      type: 'info',
-      icon: '💬',
-      unread: true,
-      timestamp: new Date().toISOString(),
-      act: 'chat',
-      forUser: selectedContactId
-    });
-  } catch(e) {
-    console.error("Failed to send message:", e);
+    input.value = '';
+    input.style.height = 'auto';
+    if (currentChatAttachment) clearChatAttachment();
+    
+    // Reset button
+    btn.disabled = false;
+    btn.innerHTML = originalBtn;
+  } catch (err) {
+    console.error("Failed to send message", err);
     showToast('❌ Gagal mengirim pesan', 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '➤';
+    }
   }
 }
 
@@ -644,12 +991,8 @@ function renderNotifications() {
   const el = document.getElementById('notif-list');
   if (!el || !session) return;
 
-  // Filter: Global notifications (no forUser) OR specifically for this user
-  // EXCEPT for Program Holder and Admin who see everything
-  const myNotifs = NOTIFS.filter(n => {
-    if (currentRole === 'pemegang' || currentRole === 'admin') return true;
-    return !n.forUser || n.forUser === session.username;
-  });
+  // Strictly filter: each user only sees notifications addressed to them
+  const myNotifs = NOTIFS.filter(n => n.forUser === session.username);
   const sorted = [...myNotifs].sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
   
   el.innerHTML = sorted.map(n => `
@@ -722,7 +1065,20 @@ function renderPickupSchedule() {
 
   let displayPickups = PICKUPS.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   
-  // Broadened Visibility (as requested): Show ALL schedules for all roles
+  if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+    const userDesa = session?.desa || session?.alamat;
+    if (userDesa) {
+      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
+      displayPickups = displayPickups.filter(p => {
+        const patient = PATIENTS.find(pt => pt.name === p.patient);
+        if (!patient) return false;
+        if (patient.desa && session.desa && patient.desa === session.desa) return true;
+        return patient.alamat && (patient.alamat === "Desa " + cleanUserDesa || patient.alamat === cleanUserDesa);
+      });
+    } else {
+      displayPickups = [];
+    }
+  }
 
   // Kalender
   cal.innerHTML = days.map((d, i) => {
@@ -766,11 +1122,27 @@ function viewScheduleByDate(dateStr, dayName) {
   
   title.innerText = `Jadwal: ${dayName}, ${dateStr} ${isToday ? '(Hari Ini)' : ''}`;
   
-  const filtered = PICKUPS.filter(p => {
+  const session = getCurrentSession();
+  let filtered = PICKUPS.filter(p => {
     let pDate = p.date;
     if (pDate === 'Hari Ini') pDate = now.toISOString().split('T')[0];
     return pDate === dateStr;
   });
+
+  if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+    const userDesa = session?.desa || session?.alamat;
+    if (userDesa) {
+      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
+      filtered = filtered.filter(p => {
+        const patient = PATIENTS.find(pt => pt.name === p.patient);
+        if (!patient) return false;
+        if (patient.desa && session.desa && patient.desa === session.desa) return true;
+        return patient.alamat && (patient.alamat === "Desa " + cleanUserDesa || patient.alamat === cleanUserDesa);
+      });
+    } else {
+      filtered = [];
+    }
+  }
   
   if (filtered.length === 0) {
     list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-muted);">
@@ -888,7 +1260,8 @@ async function simpanJadwal() {
     const docRef = await db.collection('pickups').add(newPickup);
     newPickup.firebaseId = docRef.id;
     
-    // Create Notification
+    // Create Notification for the creator (schedule created by session user)
+    const sess = getCurrentSession();
     await db.collection('notifs').add({
       title: 'Jadwal Baru',
       desc: `Jadwal ${type === 'antar' ? 'Antar' : 'Jemput'} untuk ${patientName} pada ${date}.`,
@@ -896,8 +1269,33 @@ async function simpanJadwal() {
       icon: '🚗',
       unread: true,
       timestamp: new Date().toISOString(),
-      act: 'jadwal-ambil'
+      act: 'jadwal-ambil',
+      forUser: sess.username
     });
+
+    // Also notify all pemegang program so they can monitor the schedule
+    if (sess.role === 'pendamping' || sess.role === 'petugas') {
+      try {
+        const pemegangSnap = await db.collection('users').where('role', '==', 'pemegang').get();
+        const notifTimestamp = new Date().toISOString();
+        const pemegangNotifs = [];
+        pemegangSnap.forEach(doc => {
+          pemegangNotifs.push(db.collection('notifs').add({
+            title: 'Jadwal Baru Dibuat',
+            desc: `${sess.nama} membuat jadwal ${type === 'antar' ? 'antar obat' : 'jemput'} untuk ${patientName} pada ${date}.`,
+            type: 'warning',
+            icon: '🚗',
+            unread: true,
+            timestamp: notifTimestamp,
+            act: 'jadwal-ambil',
+            forUser: doc.id
+          }));
+        });
+        await Promise.all(pemegangNotifs);
+      } catch (e) {
+        console.warn('Could not notify pemegang about new schedule:', e);
+      }
+    }
     
     closeModal('modal-jadwal');
     showToast('✅ Jadwal berhasil disimpan!', 'success');
@@ -939,25 +1337,63 @@ function pickupHTML(p) {
 }
 
 // ============ LAPORAN ============
-function renderLaporan() {
+async function renderLaporan() {
+  // Optimization: only render if page is active to save Firestore reads
+  const pageLaporan = document.getElementById('page-laporan');
+  if (!pageLaporan || pageLaporan.classList.contains('hidden')) return;
+
   const session = getCurrentSession();
   let displayPatients = PATIENTS;
   
-  // Broadened Visibility: Show ALL patients in Laporan
+  if (currentRole === 'dokter') {
+    displayPatients = PATIENTS.filter(p => p.assignedDoctorId === session?.username);
+  } else if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+    const userDesa = session?.desa || session?.alamat;
+    if (userDesa) {
+      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
+      displayPatients = PATIENTS.filter(p => {
+        if (p.desa && session.desa && p.desa === session.desa) return true;
+        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
+      });
+    } else {
+      displayPatients = [];
+    }
+  }
 
   const totalPasien = displayPatients.length;
   const compliantCount = displayPatients.filter(p => (p.pmo || 0) >= 80).length;
   const avgPmo = totalPasien > 0 ? Math.round(displayPatients.reduce((sum, p) => sum + (p.pmo || 0), 0) / totalPasien) : 0;
-  
-  const pNames = displayPatients.map(p => p.name);
-  const pmoTercatat = PICKUPS.filter(p => p.status === 'completed' && pNames.includes(p.patient)).length;
 
-  document.getElementById('laporan-summary').innerHTML = [
-    ['Total Pasien', totalPasien], 
-    ['Pasien Patuh (≥80%)', compliantCount], 
-    ['PMO Tercatat', pmoTercatat], 
-    ['Kepatuhan Rata-rata', `${avgPmo}%`],
-  ].map(([l, v]) => `<div class="report-row"><div class="report-label">${l}</div><div class="report-val">${v}</div></div>`).join('');
+  // Show initial summary while PMO count loads
+  const renderSummary = (pmoCount) => {
+    document.getElementById('laporan-summary').innerHTML = [
+      ['Total Pasien', totalPasien],
+      ['Pasien Patuh (≥80%)', compliantCount],
+      ['PMO Tercatat', pmoCount],
+      ['Kepatuhan Rata-rata', `${avgPmo}%`],
+    ].map(([l, v]) => `<div class="report-row"><div class="report-label">${l}</div><div class="report-val">${v}</div></div>`).join('');
+  };
+
+  renderSummary('⌛'); // Show loading placeholder
+
+  // Fetch real PMO log counts from Firestore subcollections (in parallel)
+  let pmoTercatat = 0;
+  try {
+    const patientsWithId = displayPatients.filter(p => p.firebaseId);
+    const countResults = await Promise.all(
+      patientsWithId.map(p =>
+        db.collection('patients').doc(p.firebaseId).collection('pmo_logs').get()
+          .then(snap => snap.size)
+          .catch(() => 0)
+      )
+    );
+    pmoTercatat = countResults.reduce((sum, c) => sum + c, 0);
+  } catch (e) {
+    console.warn('Could not fetch PMO log counts:', e);
+    pmoTercatat = 0;
+  }
+
+  renderSummary(pmoTercatat);
 
   document.getElementById('laporan-kepatuhan').innerHTML = displayPatients.map(p => `
     <div style="margin-bottom:12px;">
@@ -981,6 +1417,83 @@ function renderLaporan() {
     `<div class="report-row"><div class="report-label">${d}</div><div class="report-val">${diagCount[d]} pasien</div></div>`
   ).join('') || '<div style="color:var(--text-muted);text-align:center;padding:20px;">Belum ada data diagnosis</div>';
   setTimeout(updateReportChart, 100);
+}
+
+function downloadReportExcel() {
+  const session = getCurrentSession();
+  let displayPatients = PATIENTS;
+
+  if (currentRole === 'dokter') {
+    displayPatients = PATIENTS.filter(p => p.assignedDoctorId === session?.username);
+  } else if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
+    const userDesa = session?.desa || session?.alamat;
+    if (userDesa) {
+      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
+      displayPatients = PATIENTS.filter(p => {
+        if (p.desa && session.desa && p.desa === session.desa) return true;
+        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
+      });
+    } else {
+      displayPatients = [];
+    }
+  }
+
+  if (displayPatients.length === 0) {
+    showToast('❌ Tidak ada data untuk diekspor', 'error');
+    return;
+  }
+
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  // Build CSV rows
+  const headers = ['No', 'Nama Pasien', 'Usia', 'Jenis Kelamin', 'Diagnosis', 'Status', 'Obat Utama', 'Kepatuhan PMO (%)', 'Pendamping', 'Alamat', 'Tanggal Daftar'];
+  const csvRows = [headers];
+
+  displayPatients.forEach((p, i) => {
+    csvRows.push([
+      i + 1,
+      p.name || '-',
+      p.age || '-',
+      p.gender === 'L' ? 'Laki-laki' : (p.gender === 'P' ? 'Perempuan' : '-'),
+      p.diagnosis || '-',
+      p.status || '-',
+      (p.obat || '-').replace(/,/g, ';'), // escape commas in drug names
+      p.pmo || 0,
+      (p.pendamping || '-').replace(/,/g, ';'),
+      (p.alamat || '-').replace(/,/g, ';'),
+      p.createdAt ? p.createdAt.split('T')[0] : '-'
+    ]);
+  });
+
+  // Summary rows
+  csvRows.push([]);
+  csvRows.push(['--- RINGKASAN ---']);
+  csvRows.push(['Total Pasien', displayPatients.length]);
+  csvRows.push(['Pasien Patuh (≥80%)', displayPatients.filter(p => (p.pmo||0) >= 80).length]);
+  const avgPmo = displayPatients.length > 0 ? Math.round(displayPatients.reduce((s, p) => s + (p.pmo || 0), 0) / displayPatients.length) : 0;
+  csvRows.push(['Rata-rata Kepatuhan', `${avgPmo}%`]);
+  csvRows.push([]);
+  csvRows.push(['Laporan dibuat oleh:', session.nama, 'pada', `${dateStr} ${timeStr}`]);
+
+  // Convert to CSV string
+  const csvContent = '\uFEFF' + csvRows.map(row =>
+    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n');
+
+  // Trigger download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Laporan_SiJagaJiwa_${dateStr}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  showToast('✅ Laporan berhasil diekspor ke Excel!', 'success');
 }
 
 let reportChartInstance = null;
@@ -1227,6 +1740,7 @@ async function tambahPasien() {
   const alamat = document.getElementById('tp-alamat')?.value;
   const diagnosis = document.getElementById('tp-diag')?.value;
   const pendamping = document.getElementById('tp-pendamping')?.value;
+  const desa = document.getElementById('tp-desa')?.value;
 
   if(!name || !nik) {
     showToast('❌ Nama dan NIK wajib diisi!', 'danger');
@@ -1256,21 +1770,24 @@ async function tambahPasien() {
     pmo_sessions: [false, false, false],
     nik: nik,
     alamat: alamat || '-',
+    desa: desa || '-',
     createdAt: new Date().toISOString()
   };
 
   try {
     const docRef = await db.collection('patients').add(newPatient);
     
-    // Create Notification
+    // Create Notification for creator
+    const sess2 = getCurrentSession();
     await db.collection('notifs').add({
       title: 'Pasien Baru',
-      desc: `${name} telah didaftarkan ke sistem.`,
+      desc: `${name} telah berhasil didaftarkan ke sistem.`,
       type: 'info',
       icon: '👤',
       unread: true,
       timestamp: new Date().toISOString(),
-      act: 'data-pasien'
+      act: 'data-pasien',
+      forUser: sess2.username
     });
     
     if(document.getElementById('tp-nama')) document.getElementById('tp-nama').value = '';
@@ -1290,6 +1807,17 @@ async function tambahPasien() {
   }
 }
 
+function openPmoModal() {
+  const isPetugas = currentRole === 'petugas';
+  const display = isPetugas ? 'none' : 'block';
+  
+  document.getElementById('pmo-group-obat').style.display = display;
+  document.getElementById('pmo-group-waktu').style.display = display;
+  document.getElementById('pmo-group-status').style.display = display;
+  
+  openModal('modal-pmo');
+}
+
 async function simpanPMO() {
   const pasienName = document.getElementById('pmo-pasien-input')?.value;
   const obatName = document.getElementById('pmo-obat-input')?.value;
@@ -1298,16 +1826,25 @@ async function simpanPMO() {
   const gejala = document.getElementById('pmo-gejala-input')?.value || '';
   const catatan = document.getElementById('pmo-catatan-input')?.value || '';
   
-  if(!pasienName || !obatName || !waktu) {
-    showToast('❌ Pasien, Obat, dan Waktu wajib diisi!', 'error');
-    return;
-  }
+  const isPetugas = currentRole === 'petugas';
+  
+  // IMMEDIATELY disable button to prevent double submits during file processing/matching
+  const btnSubmit = document.querySelector('button[onclick="simpanPMO()"]');
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerText = '⌛ Memproses...'; }
 
-  const patient = PATIENTS.find(p => p.name === pasienName);
-  if (!patient) {
-    showToast('❌ Pasien tidak ditemukan!', 'error');
-    return;
-  }
+  try {
+    if(!pasienName || (!isPetugas && (!obatName || !waktu))) {
+      showToast('❌ Pasien, Obat, dan Waktu wajib diisi!', 'error');
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerText = 'Simpan PMO'; }
+      return;
+    }
+
+    const patient = PATIENTS.find(p => p.name === pasienName);
+    if (!patient) {
+      showToast('❌ Pasien tidak ditemukan!', 'error');
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerText = 'Simpan PMO'; }
+      return;
+    }
 
   // Handle file input if exists (convert to base64 for simplicity in demo)
   const fileInput = document.getElementById('pmo-foto-bukti');
@@ -1315,32 +1852,59 @@ async function simpanPMO() {
 
   if (fileInput && fileInput.files.length > 0) {
     const file = fileInput.files[0];
+    
+    // Validate file size before compression (max 10MB to avoid browser hang)
+    if (file.size > 10 * 1024 * 1024) {
+       showToast('❌ Gambar terlalu besar (Maks 10MB)', 'error');
+       return;
+    }
+
     try {
-      base64Foto = await new Promise((resolve, reject) => {
+      // More aggressive compression: 800px width, 0.5 quality to ensure payload < 200KB
+      base64Foto = await compressImage(file, 0.5, 800); 
+    } catch(err) {
+      console.warn("Failed to compress image file", err);
+      // Fallback to raw if compression fails (though unlikely)
+      base64Foto = await new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
+        reader.onload = (e) => resolve(e.target.result);
         reader.readAsDataURL(file);
       });
-    } catch(err) {
-      console.warn("Failed to read image file", err);
     }
   }
 
+  // For petugas, handle missing fields with defaults
+  let finalObat = obatName;
+  let finalWaktu = waktu;
+  let finalStatus = status;
+
+  if (isPetugas) {
+    if (!finalObat) finalObat = patient.obat || 'Obat Rutin';
+    if (!finalWaktu) {
+      const now = new Date();
+      finalWaktu = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    }
+    finalStatus = 'done'; // Always success if recorded by health officer directly
+  }
+
   // Create new PMO Log entry
+  const session = getCurrentSession();
   const pmoEntry = {
-    waktu: waktu,
-    obat: obatName,
-    status: status, // done, pending, missed
+    waktu: finalWaktu,
+    obat: finalObat,
+    status: finalStatus, // done, pending, missed
     gejala: gejala,
     catatan: catatan,
     foto: base64Foto, // Optional base64 image
+    recordedBy: session?.nama || 'Unknown',
+    recorderRole: session?.role || 'user',
     timestamp: new Date().toISOString()
   };
 
-  try {
-    // 1. Save PMO entry to a subcollection in Firestore (history)
-    await db.collection('patients').doc(patient.firebaseId).collection('pmo_logs').add(pmoEntry);
+  if (btnSubmit) { btnSubmit.innerText = '⌛ Mencatat...'; }
+
+  // 1. Save PMO entry to a subcollection in Firestore (history)
+  await db.collection('patients').doc(patient.firebaseId).collection('pmo_logs').add(pmoEntry);
     
     // 2. Recalculate PMO Compliance score
     let newScore = patient.pmo || 0;
@@ -1356,8 +1920,7 @@ async function simpanPMO() {
       else if (hour >= 16 && hour <= 23) sessions[2] = true;
     }
 
-    const btn = document.querySelector('button[onclick="simpanPMO()"]');
-    if (btn) { btn.disabled = true; btn.innerText = '⌛ Mencatat...'; }
+    if (btnSubmit) { btnSubmit.innerText = '⌛ Mencatat...'; }
 
     await db.collection('patients').doc(patient.firebaseId).update({
       pmo: newScore,
@@ -1373,16 +1936,34 @@ async function simpanPMO() {
     closeModal('modal-pmo');
     showToast('✅ PMO berhasil dicatat!', 'success');
 
-    // Create Notification
-    await db.collection('notifs').add({
+    // Create Notification: notify the assigned doctor (if any) and the recorder
+    const sessNow = getCurrentSession();
+    const notifPromises = [];
+    // Always notify the recorder
+    notifPromises.push(db.collection('notifs').add({
       title: 'PMO Dicatat',
-      desc: `Pencatatan obat untuk ${pasienName} telah disimpan.`,
+      desc: `Pencatatan obat untuk ${pasienName} telah disimpan oleh Anda.`,
       type: 'success',
       icon: '💊',
       unread: true,
       timestamp: new Date().toISOString(),
-      act: 'pmo'
-    });
+      act: 'pmo',
+      forUser: sessNow.username
+    }));
+    // Also notify the assigned doctor if one exists
+    if (patient.assignedDoctorId) {
+      notifPromises.push(db.collection('notifs').add({
+        title: 'Update PMO Pasien',
+        desc: `Konsumsi obat ${pasienName} baru saja dicatat oleh ${sessNow.nama}.`,
+        type: 'info',
+        icon: '💊',
+        unread: true,
+        timestamp: new Date().toISOString(),
+        act: 'data-pasien',
+        forUser: patient.assignedDoctorId
+      }));
+    }
+    await Promise.all(notifPromises);
     
     // Clear form
     if(document.getElementById('pmo-pasien-input')) document.getElementById('pmo-pasien-input').value = '';
@@ -1406,23 +1987,30 @@ async function viewPmoDetails(pasienName) {
   const patient = PATIENTS.find(p => p.name === pasienName);
   if (!patient) return;
 
-  document.getElementById('pmo-detail-name').textContent = patient.name;
-  const listEl = document.getElementById('pmo-detail-list');
-  listEl.innerHTML = '<div style="padding:20px; text-align:center;">Memuat data...</div>';
+  // Rewrite modal header title and body for the "PMO History" mode
+  const titleEl = document.querySelector('#modal-pmo-detail .modal-title');
+  if (titleEl) titleEl.textContent = `📋 Riwayat PMO: ${patient.name}`;
+
+  const bodyEl = document.querySelector('#modal-pmo-detail .modal-body');
+  if (bodyEl) bodyEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">Memuat riwayat PMO...</div>';
+
   openModal('modal-pmo-detail');
 
   try {
     const snapshot = await db.collection('patients').doc(patient.firebaseId).collection('pmo_logs').orderBy('timestamp', 'desc').get();
     
+    const body = document.querySelector('#modal-pmo-detail .modal-body');
+    if (!body) return;
+
     if (snapshot.empty) {
-      listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted)">Belum ada riwayat PMO</div>';
+      body.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted)">Belum ada riwayat PMO</div>';
       return;
     }
 
     const logs = [];
     snapshot.forEach(doc => logs.push(doc.data()));
 
-    listEl.innerHTML = logs.map(log => {
+    body.innerHTML = logs.map(log => {
       const dateStr = new Date(log.timestamp).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       const statusIcon = log.status === 'done' ? '✅' : log.status === 'missed' ? '❌' : '⏳';
       const statusColor = log.status === 'done' ? '#065f46' : log.status === 'missed' ? '#991b1b' : '#92400e';
@@ -1438,6 +2026,12 @@ async function viewPmoDetails(pasienName) {
       if (log.catatan && log.catatan.trim() !== '') {
          catatanHtml = `<div style="font-size:12px; margin-top:4px; color:var(--text-muted); font-style:italic;">Catatan: "${log.catatan}"</div>`;
       }
+
+      let recordedHtml = '';
+      if (log.recordedBy) {
+         const roleLabel = ROLE_INFO[log.recorderRole]?.label || log.recorderRole;
+         recordedHtml = `<div style="font-size:10px; margin-top:6px; color:var(--primary); font-weight:600;">✍️ Dicatat oleh: ${log.recordedBy} (${roleLabel})</div>`;
+      }
       
       let fotoHtml = '';
       if (log.foto) {
@@ -1449,7 +2043,7 @@ async function viewPmoDetails(pasienName) {
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
             <div>
               <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">${dateStr} (Pukul ${log.waktu})</div>
-              <div style="font-size:14px; font-weight:600;">💊 ${log.obat}</div>
+              <div style="font-size:14px; font-weight:600;">💊 ${log.obat || '-'}</div>
             </div>
             <div style="background:${statusBg}; color:${statusColor}; font-size:11px; padding:4px 8px; border-radius:12px; font-weight:600;">
               ${statusIcon} ${statusLabel}
@@ -1457,14 +2051,16 @@ async function viewPmoDetails(pasienName) {
           </div>
           ${gejalaHtml}
           ${catatanHtml}
+          ${recordedHtml}
           ${fotoHtml}
         </div>
       `;
-    }).join('');
+    }).join('') + `<button class="btn btn-primary" style="width:calc(100% - 32px); margin:16px;" onclick="closeModal('modal-pmo-detail')">Tutup</button>`;
 
   } catch (e) {
     console.error("Failed to load PMO history", e);
-    listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--danger)">Gagal memuat riwayat</div>';
+    const body = document.querySelector('#modal-pmo-detail .modal-body');
+    if (body) body.innerHTML = '<div style="padding:20px; text-align:center; color:var(--danger)">Gagal memuat riwayat</div>';
   }
 }
 
@@ -1522,6 +2118,7 @@ function openEditPatient() {
   document.getElementById('edit-p-diag').value = p.diagnosis || '';
   document.getElementById('edit-p-status').value = p.status || 'stable';
   document.getElementById('edit-p-alamat').value = p.alamat || '';
+  document.getElementById('edit-p-desa').value = p.desa || '';
   
   openModal('modal-edit-pasien');
 }
@@ -1537,6 +2134,7 @@ async function simpanEditPasien() {
   const diag = document.getElementById('edit-p-diag').value;
   const status = document.getElementById('edit-p-status').value;
   const alamat = document.getElementById('edit-p-alamat').value;
+  const desa = document.getElementById('edit-p-desa').value;
 
   if (!name) {
     showToast('❌ Nama wajib diisi!', 'error');
@@ -1546,7 +2144,7 @@ async function simpanEditPasien() {
   try {
     if (fid) {
       await db.collection('patients').doc(fid).update({
-        name, nik, diagnosis: diag, status, alamat
+        name, nik, diagnosis: diag, status, alamat, desa
       });
     }
 
@@ -1558,6 +2156,7 @@ async function simpanEditPasien() {
       p.diagnosis = diag;
       p.status = status;
       p.alamat = alamat;
+      p.desa = desa;
     }
 
     closeModal('modal-edit-pasien');
@@ -1756,16 +2355,31 @@ async function updatePatientStatusFirestore(firebaseId, status) {
     await db.collection('patients').doc(firebaseId).update({ status: status });
     showToast(`✅ Status berhasil diperbarui ke ${status === 'monitor' ? 'Pantau' : status}`, 'success');
 
-    // Create Activity Notification
-    await db.collection('notifs').add({
+    // Create Activity Notification — notify WHO made the update and the doctor if assigned
+    const sess3 = getCurrentSession();
+    const notifBatch = [db.collection('notifs').add({
       title: 'Status Diperbarui',
-      desc: `Status ${p?.name || 'Pasien'} diubah menjadi ${status === 'monitor' ? 'Pantau' : status} oleh ${getCurrentSession()?.nama}.`,
+      desc: `Status ${p?.name || 'Pasien'} diubah menjadi ${status === 'monitor' ? 'Pantau' : status}.`,
       type: 'info',
       icon: '📝',
       unread: true,
       timestamp: new Date().toISOString(),
-      act: 'data-pasien'
-    });
+      act: 'data-pasien',
+      forUser: sess3.username
+    })];
+    if (p?.assignedDoctorId && p.assignedDoctorId !== sess3.username) {
+      notifBatch.push(db.collection('notifs').add({
+        title: 'Status Pasien Berubah',
+        desc: `Status pasien Anda, ${p.name}, diubah menjadi ${status === 'monitor' ? 'Pantau' : status}.`,
+        type: 'warning',
+        icon: '📝',
+        unread: true,
+        timestamp: new Date().toISOString(),
+        act: 'data-pasien',
+        forUser: p.assignedDoctorId
+      }));
+    }
+    await Promise.all(notifBatch);
   } catch (e) {
     console.error("Update status error", e);
     showToast('❌ Gagal memperbarui status', 'error');
@@ -1785,16 +2399,31 @@ async function completeDoctorConsultation(firebaseId) {
     });
     showToast('✅ Konsultasi selesai. Pasien telah dikembalikan.', 'success');
 
-    // Create Activity Notification
+    // Create Activity Notification — notify the pemegang who originally sent the patient
     await db.collection('notifs').add({
       title: 'Konsultasi Selesai',
-      desc: `Konsultasi dr. ${p?.assignedDoctorName || ''} untuk ${p?.name || 'Pasien'} telah selesai.`,
+      desc: `Konsultasi untuk ${p?.name || 'Pasien'} telah diselesaikan oleh dokter.`,
       type: 'success',
       icon: '✅',
       unread: true,
       timestamp: new Date().toISOString(),
-      act: 'data-pasien'
+      act: 'data-pasien',
+      forUser: p?.createdBy || p?.petugas || getCurrentSession().username
     });
+    // Also notify the current doctor that they completed it
+    const sessDoc = getCurrentSession();
+    if (sessDoc) {
+      await db.collection('notifs').add({
+        title: 'Konsultasi Selesai',
+        desc: `Anda telah menyelesaikan konsultasi untuk ${p?.name || 'Pasien'}.`,
+        type: 'success',
+        icon: '✅',
+        unread: true,
+        timestamp: new Date().toISOString(),
+        act: 'data-pasien',
+        forUser: sessDoc.username
+      });
+    }
   } catch (e) {
     console.error("Complete consultation error", e);
     showToast('❌ Gagal mengakhiri konsultasi', 'error');
