@@ -20,9 +20,9 @@ window.onload = () => {
     }
   })();
 
-  // 3. UI Entrance (Don't wait for seeding)
+  // 3. UI Entrance (Faster transition for LCP)
   const session = getCurrentSession();
-  setTimeout(() => {
+  const initUI = () => {
     const splash = document.getElementById("splash");
     if (splash) splash.classList.add("hide");
 
@@ -40,7 +40,10 @@ window.onload = () => {
     } else {
       renderWalkthrough();
     }
-  }, 300);
+  };
+
+  // Run UI entrance slightly after data load starts
+  setTimeout(initUI, 100);
 
   // Live time updater
   setInterval(() => {
