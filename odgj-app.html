@@ -827,49 +827,11 @@
 
 <script>
 // ============ DATA ============
-const PATIENTS = [
-  { id:1, name:'Siti Rahayu', age:42, gender:'P', diagnosis:'Skizofrenia', status:'monitor', pendamping:'Budi R.', obat:'Haloperidol 5mg', pmo:70, nik:'3271234567890001', alamat:'Jl. Merdeka No. 12, Bandung' },
-  { id:2, name:'Ahmad Supriadi', age:35, gender:'L', diagnosis:'Bipolar', status:'stable', pendamping:'Siti A.', obat:'Lithium 400mg', pmo:90, nik:'3271234567890002', alamat:'Jl. Sudirman No. 5, Bandung' },
-  { id:3, name:'Dewi Lestari', age:29, gender:'P', diagnosis:'Depresi Berat', status:'critical', pendamping:'Andi L.', obat:'Fluoxetine 20mg', pmo:40, nik:'3271234567890003', alamat:'Jl. Pahlawan No. 8, Bandung' },
-  { id:4, name:'Rudi Hartono', age:55, gender:'L', diagnosis:'OCD', status:'stable', pendamping:'Maya H.', obat:'Sertraline 50mg', pmo:85, nik:'3271234567890004', alamat:'Jl. Gatot Subroto No. 3' },
-  { id:5, name:'Nurul Hidayah', age:38, gender:'P', diagnosis:'Skizofrenia', status:'monitor', pendamping:'Yusuf K.', obat:'Clozapine 25mg', pmo:65, nik:'3271234567890005', alamat:'Jl. Diponegoro No. 17' },
-];
-
-const DRUGS = [
-  { name:'Haloperidol 5mg', stok:45, min:50, kadaluarsa:'2025-08', pemasok:'Apotek Sehat' },
-  { name:'Lithium 400mg', stok:120, min:60, kadaluarsa:'2026-03', pemasok:'Apotek Maju' },
-  { name:'Clozapine 25mg', stok:30, min:40, kadaluarsa:'2025-12', pemasok:'Apotek Sehat' },
-  { name:'Fluoxetine 20mg', stok:200, min:80, kadaluarsa:'2026-06', pemasok:'Apotek Raya' },
-  { name:'Sertraline 50mg', stok:22, min:50, kadaluarsa:'2026-01', pemasok:'Apotek Maju' },
-];
-
-const PICKUPS = [
-  { patient:'Siti Rahayu', pendamping:'Budi R.', time:'08:00', date:'Hari Ini', alamat:'Jl. Merdeka No. 12', status:'scheduled' },
-  { patient:'Dewi Lestari', pendamping:'Andi L.', time:'09:30', date:'Hari Ini', alamat:'Jl. Pahlawan No. 8', status:'done' },
-  { patient:'Nurul Hidayah', pendamping:'Yusuf K.', time:'14:00', date:'Hari Ini', alamat:'Jl. Diponegoro No. 17', status:'scheduled' },
-  { patient:'Ahmad Supriadi', pendamping:'Siti A.', time:'10:00', date:'Besok', alamat:'Jl. Sudirman No. 5', status:'scheduled' },
-];
-
-const NOTIFS = [
-  { type:'red', icon:'⚠️', title:'Stok Haloperidol Kritis!', desc:'Sisa 45 tablet, di bawah batas minimum. Segera lakukan restock.', time:'2 menit lalu', unread:true },
-  { type:'orange', icon:'💊', title:'PMO Belum Dilaporkan', desc:'Siti Rahayu belum lapor minum obat malam ini.', time:'15 menit lalu', unread:true },
-  { type:'blue', icon:'💬', title:'Pesan Baru dari Dokter', desc:'Dr. Ahmad Fauzi: "Mohon pantau kondisi Siti Rahayu hari ini."', time:'30 menit lalu', unread:true },
-  { type:'green', icon:'✅', title:'Jadwal Dikonfirmasi', desc:'Antar-jemput obat Dewi Lestari berhasil selesai.', time:'1 jam lalu', unread:false },
-  { type:'orange', icon:'📅', title:'Pengingat Jadwal', desc:'Antar-jemput obat Siti Rahayu dalam 30 menit.', time:'2 jam lalu', unread:false },
-];
-
-const CHATS = {
-  'Dr. Ahmad Fauzi': [
-    { mine:false, msg:'Selamat pagi! Ada yang bisa saya bantu?', time:'09:00' },
-    { mine:true, msg:'Dok, Siti Rahayu sepertinya kurang kooperatif untuk minum obat.', time:'09:02' },
-    { mine:false, msg:'Baik, saya akan pantau kondisinya. Tolong catat di sistem PMO ya.', time:'09:03' },
-    { mine:true, msg:'Sudah saya catat dok. Terima kasih!', time:'09:04' },
-  ],
-  'Petugas Puskesmas': [
-    { mine:false, msg:'Stok obat di gudang sudah berkurang banyak.', time:'08:30' },
-    { mine:true, msg:'Akan saya laporkan ke pemegang program segera.', time:'08:32' },
-  ],
-};
+const PATIENTS = [];
+const DRUGS = [];
+const PICKUPS = [];
+const NOTIFS = [];
+const CHATS = {};
 
 let currentRole = 'dokter';
 let currentPage = 'dashboard';
@@ -1125,7 +1087,7 @@ function renderBarChart() {
   const chart = document.getElementById('bar-chart');
   const labelEl = document.getElementById('chart-labels');
   const days = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
-  const vals = [18, 24, 20, 31, 27, 15, 22];
+  const vals = [0, 0, 0, 0, 0, 0, 0];
   const max = Math.max(...vals);
   chart.innerHTML = vals.map((v, i) => `
     <div class="bar-col">
@@ -1347,7 +1309,7 @@ function pickupHTML(p) {
 // ============ LAPORAN ============
 function renderLaporan() {
   document.getElementById('laporan-summary').innerHTML = [
-    ['Total Pasien', '247'],['Kunjungan Baru', '14'],['PMO Tercatat', '1,840'],['Kepatuhan Rata-rata', '72%'],
+    ['Total Pasien', '0'],['Kunjungan Baru', '0'],['PMO Tercatat', '0'],['Kepatuhan Rata-rata', '0%'],
   ].map(([l,v]) => `<div class="report-row"><div class="report-label">${l}</div><div class="report-val">${v}</div></div>`).join('');
 
   document.getElementById('laporan-kepatuhan').innerHTML = PATIENTS.map(p => `
@@ -1360,7 +1322,7 @@ function renderLaporan() {
   `).join('');
 
   const diagnoses = ['Skizofrenia','Bipolar','Depresi Berat','OCD','Kecemasan'];
-  const counts = [2,1,1,1,0];
+  const counts = [0,0,0,0,0];
   document.getElementById('laporan-diagnosis').innerHTML = diagnoses.map((d,i) => counts[i] > 0 ? `
     <div class="report-row">
       <div class="report-label">${d}</div>

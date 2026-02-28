@@ -4,36 +4,11 @@
  */
 
 // ============ ORIGINAL DATA ============
-const DEFAULT_PATIENTS = [
-  { id: 101, name: "Siti Aminah", age: 45, gender: "P", diagnosis: "Skizofrenia", status: "monitor", pendamping: "Ibu Siti Rahayu", obat: "Haloperidol 5mg", pmo: 75, nik: "3526010101750001", alamat: "Desa Alas Rajah", createdAt: "2024-01-15T10:00:00Z" },
-  { id: 102, name: "Ahmad Fauzi", age: 32, gender: "L", diagnosis: "Bipolar", status: "stable", pendamping: "Bapak Ahmad Hidayat", obat: "Lithium 400mg", pmo: 90, nik: "3526010203850001", alamat: "Desa Bates", createdAt: "2024-02-20T11:00:00Z" },
-  { id: 103, name: "Bambang Sugeng", age: 50, gender: "L", diagnosis: "Skizofrenia", status: "monitor", pendamping: "Sdr. Budi Santoso", obat: "Clozapine 25mg", pmo: 60, nik: "3526010305700001", alamat: "Desa Blega", createdAt: "2024-04-05T09:00:00Z" },
-  { id: 104, name: "Dewi Sartika", age: 28, gender: "P", diagnosis: "Depresi Berat", status: "stable", pendamping: "Ibu Laila Sari", obat: "Fluoxetine 20mg", pmo: 85, nik: "3526010407950001", alamat: "Desa Blega Oloh", createdAt: "2024-05-12T14:30:00Z" },
-  { id: 105, name: "Eko Prasetyo", age: 37, gender: "L", diagnosis: "OCD", status: "stable", pendamping: "Bapak Agus Setiawan", obat: "Sertraline 50mg", pmo: 80, nik: "3526010509850001", alamat: "Desa Gigir", createdAt: "2024-07-18T08:15:00Z" },
-  { id: 106, name: "Farida Hasanah", age: 41, gender: "P", diagnosis: "Skizofrenia", status: "monitor", pendamping: "Sdri. Rina Marlina", obat: "Risperidone 2mg", pmo: 70, nik: "3526010611800001", alamat: "Desa Kajjan", createdAt: "2024-08-25T16:00:00Z" },
-  { id: 107, name: "Gani Rohmat", age: 56, gender: "L", diagnosis: "Demensia", status: "stable", pendamping: "Bapak Yusuf Mansur", obat: "Donepezil 5mg", pmo: 95, nik: "3526010713650001", alamat: "Desa Kampao", createdAt: "2024-10-10T10:45:00Z" },
-  { id: 108, name: "Hani Suci", age: 30, gender: "P", diagnosis: "Bipolar", status: "stable", pendamping: "Ibu Sri Wahyuni", obat: "Quetiapine 100mg", pmo: 88, nik: "3526010815900001", alamat: "Desa Karang Gayam", createdAt: "2024-12-01T09:30:00Z" },
-  { id: 109, name: "Indra Jaya", age: 44, gender: "L", diagnosis: "Skizofrenia", status: "monitor", pendamping: "Bapak Bambang Heru", obat: "Haloperidol 5mg", pmo: 65, nik: "3526010917750001", alamat: "Desa Karang Nangkah", createdAt: "2025-01-22T13:20:00Z" },
-  { id: 110, name: "Jaka Pratama", age: 33, gender: "L", diagnosis: "OCD", status: "stable", pendamping: "Ibu Ani Sumarni", obat: "Fluvoxamine 50mg", pmo: 82, nik: "3526011019880001", alamat: "Desa Karang Panasan", createdAt: "2025-03-14T11:10:00Z" },
-  { id: 111, name: "Kurniawati", age: 29, gender: "P", diagnosis: "Depresi", status: "monitor", pendamping: "Sdr. Dedi Kurniawan", obat: "Escitalopram 10mg", pmo: 55, nik: "3526011121950001", alamat: "Desa Karpote", createdAt: "2025-05-05T15:00:00Z" },
-  { id: 112, name: "Laila Mujiani", age: 52, gender: "P", diagnosis: "Skizofrenia", status: "stable", pendamping: "Sdri. Evi Rosita", obat: "Olanzapine 5mg", pmo: 92, nik: "3526011223700001", alamat: "Desa Ko'olan", createdAt: "2025-06-28T08:45:00Z" },
-  { id: 113, name: "Mamat Slamet", age: 48, gender: "L", diagnosis: "Bipolar", status: "monitor", pendamping: "Bapak Toto Handoko", obat: "Valproate 250mg", pmo: 68, nik: "3526011325750001", alamat: "Desa Lomaer", createdAt: "2025-08-30T10:00:00Z" },
-  { id: 114, name: "Nana Rohana", age: 39, gender: "P", diagnosis: "Skizofrenia", status: "stable", pendamping: "Ibu Wiwin Setyawati", obat: "Risperidone 2mg", pmo: 89, nik: "3526011427850001", alamat: "Desa Lombang Dajah", createdAt: "2025-10-12T14:15:00Z" },
-  { id: 115, name: "Oman Kusnadi", age: 60, gender: "L", diagnosis: "Demensia", status: "monitor", pendamping: "Sdr. Udin Jaelani", obat: "Memantine 10mg", pmo: 62, nik: "3526011529600001", alamat: "Desa Lombang Laok", createdAt: "2025-11-20T09:50:00Z" },
-  { id: 116, name: "Pipit Sundari", age: 27, gender: "P", diagnosis: "Depresi", status: "stable", pendamping: "Sdri. Vera Puspita", obat: "Amitriptyline 25mg", pmo: 91, nik: "3526011631980001", alamat: "Desa Nyor Manes", createdAt: "2026-01-05T11:30:00Z" },
-  { id: 117, name: "Qori Amelia", age: 35, gender: "P", diagnosis: "Bipolar", status: "monitor", pendamping: "Bapak Wawan Bakri", obat: "Lamotrigine 50mg", pmo: 66, nik: "3526011701900001", alamat: "Desa Pangeran Gedungan", createdAt: "2026-01-15T08:00:00Z" },
-  { id: 118, name: "Rahmat Bary", age: 43, gender: "L", diagnosis: "Skizofrenia", status: "stable", pendamping: "Ibu Yani Fitri", obat: "Clozapine 25mg", pmo: 94, nik: "3526011803780001", alamat: "Desa Panjalinan", createdAt: "2026-02-10T14:40:00Z" },
-  { id: 119, name: "Shanti Dwi", age: 31, gender: "P", diagnosis: "OCD", status: "monitor", pendamping: "Bapak Rudi Hartono", obat: "Paroxetine 20mg", pmo: 63, nik: "3526011905920001", alamat: "Desa Rosep", createdAt: "2026-02-20T10:15:00Z" },
-];
-
+const DEFAULT_PATIENTS = [];
 const DEFAULT_DRUGS = [];
-
 const DEFAULT_PICKUPS = [];
-
 const DEFAULT_NOTIFS = [];
-
-const DEFAULT_CHATS = {}; // No default mixed chats
-
+const DEFAULT_CHATS = {};
 // ============ PERSISTENT DATA ============
 let PATIENTS = [];
 let DRUGS = [];
