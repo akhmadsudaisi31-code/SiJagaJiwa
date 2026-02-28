@@ -1673,7 +1673,7 @@ function renderProfil() {
       superZone.innerHTML = `
         <div style="margin-top:24px; padding:16px; border:1px solid #fee2e2; border-radius:12px; background:#fef2f2;">
           <div style="font-weight:700; color:#b91c1c; font-size:14px; margin-bottom:8px;">🛠️ Area Terlarang (Superadmin)</div>
-          <div style="font-size:12px; color:#7f1d1d; margin-bottom:12px;">Fitur ini akan menghapus SELURUH data pasien, jadwal, dan chat secara permanen.</div>
+          <div style="font-size:12px; color:#7f1d1d; margin-bottom:12px;">Fitur ini akan menghapus SELURUH data pasien, jadwal, stok obat, dan chat secara permanen.</div>
           <button class="btn btn-danger" style="width:100%; font-size:13px; padding:10px;" onclick="resetDatabaseToEmpty()">
             ⚠️ Kosongkan Seluruh Data Aplikasi
           </button>

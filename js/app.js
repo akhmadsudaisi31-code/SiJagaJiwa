@@ -40,7 +40,7 @@ window.onload = () => {
     } else {
       renderWalkthrough();
     }
-  }, 1000);
+  }, 300);
 
   // Live time updater
   setInterval(() => {

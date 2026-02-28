@@ -107,7 +107,7 @@ async function loadDataFromFirestore() {
  */
 async function resetDatabaseToEmpty(isSilent = false) {
   if (!isSilent) {
-    const isConfirmed = window.confirm("⚠️ Anda akan menghapus SELURUH data pasien, jadwal, dan catatan PMO. Lanjutkan?");
+    const isConfirmed = window.confirm("⚠️ Anda akan menghapus SELURUH data pasien, jadwal, stok obat, dan catatan PMO. Lanjutkan?");
     if (!isConfirmed) return;
   }
   
