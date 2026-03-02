@@ -58,9 +58,10 @@ const DEFAULT_USERS = [
   { role: 'pendamping', nama: 'Bapak Rudi Hartono', username: 'keluarga_rosep', password: 'password123', nik: '3526010101750020', hubungan: 'Suami', alamat: 'Desa Rosep', no_hp: '081234568019' }
 ];
 
-async function seedDefaultUsers() {
-  return; // Disabled
-  if (localStorage.getItem('seed_v8')) return;
+window.seedDefaultUsers = async function() {
+  // Check if users collection is empty
+  const userCount = await db.collection('users').limit(1).get();
+  if (!userCount.empty && !window.forceSeed) return;
 
   console.log("Seeding default users (background)...");
   
@@ -73,11 +74,15 @@ async function seedDefaultUsers() {
         const dummyEmail = u.username + DUMMY_DOMAIN;
         try {
           await auth.createUserWithEmailAndPassword(dummyEmail, u.password);
-        } catch (ae) { /* Ignore existing */ }
+        } catch (ae) { 
+          // If already exists in Auth, that's fine, we just want to ensure Firestore profile is there
+          if (ae.code !== 'auth/email-already-in-use') throw ae;
+        }
         
         const profile = { ...u };
         delete profile.password;
-        await db.collection('users').doc(u.username).set(profile);
+        profile.createdAt = profile.createdAt || firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('users').doc(u.username).set(profile, { merge: true });
       } catch (err) {
         console.error("Failed to seed user:", u.username, err);
       }
@@ -85,6 +90,9 @@ async function seedDefaultUsers() {
   }
   localStorage.setItem('seed_v8', 'true');
 }
+
+// Auto-seed if empty on load
+window.seedDefaultUsers();
 
 function getCurrentSession() {
   try {
@@ -150,10 +158,42 @@ async function registerUser(role, formData) {
     return { success: true, user: userProfile };
   } catch (error) {
     console.error("Error registering user: ", error);
-    if(error.code === 'auth/email-already-in-use') {
-       return { success: false, error: 'Username sudah terdaftar di sistem Auth!' };
+    
+    // REPAIR MODE: If Auth account exists but Firestore profile is missing
+    if (error.code === 'auth/email-already-in-use') {
+      try {
+        const username = formData.username.trim().toLowerCase();
+        const dummyEmail = username + DUMMY_DOMAIN;
+        
+        // Try to sign in to verify the password matches
+        await auth.signInWithEmailAndPassword(dummyEmail, formData.password);
+        const firebaseUser = auth.currentUser;
+        
+        // If sign-in works, user is the legitimate owner. Repair the profile.
+        const userProfile = {
+          id: Date.now(),
+          uid: firebaseUser.uid,
+          role: role,
+          ...formData,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          repairedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        delete userProfile.password;
+        delete userProfile.password_confirm;
+
+        await db.collection('users').doc(username).set(userProfile);
+        await auth.signOut();
+        
+        return { success: true, user: userProfile, repaired: true };
+      } catch (repairError) {
+        if (repairError.code === 'auth/wrong-password') {
+          return { success: false, error: 'Username sudah terdaftar! Password yang Anda masukkan salah.' };
+        }
+        return { success: false, error: 'Gagal memulihkan akun: ' + repairError.message };
+      }
     }
-    return { success: false, error: 'Gagal melakukan pendaftaran. Coba lagi.' };
+    
+    return { success: false, error: 'Gagal melakukan pendaftaran. Coba lagi: ' + error.message };
   }
 }
 
@@ -171,7 +211,7 @@ async function loginUser(username, password) {
 
     if (!doc.exists) {
       await auth.signOut(); // Rollback auth if profile missing
-      return { success: false, error: 'Data profil pengguna tidak ditemukan!' };
+      return { success: false, error: 'Data profil terhapus (Lockout). Silakan masuk ke menu "Daftar Baru" dan daftar ulang dengan username yang sama untuk memulihkan akun.' };
     }
     
     const user = doc.data();

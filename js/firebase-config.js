@@ -5,15 +5,18 @@ const firebaseConfig = {
   projectId: "sijagajiwa",
   storageBucket: "sijagajiwa.firebasestorage.app",
   messagingSenderId: "390090253303",
-  appId: "1:390090253303:web:8b7810f6b0d27b2d4584f2"
+  appId: "1:390090253303:web:8b7810f6b0d27b2d4584f2",
+  measurementId: "G-DXZMNJMK3Q"
 };
 
 // Initialize Firebase
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
+
 const db = firebase.firestore();
 const auth = firebase.auth();
+const analytics = firebase.analytics();
 
 // Optional: Enable offline persistence
 db.enablePersistence().catch((err) => {

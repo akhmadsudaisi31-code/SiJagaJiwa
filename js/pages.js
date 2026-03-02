@@ -25,6 +25,12 @@ function renderDashboardPatients() {
   }
   
   if (!el) return;
+
+  if (!SYNC_STATUS.isReady && displayPatients.length === 0) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">⌛ Menghubungkan ke server dan sinkronisasi data...</div>';
+    return;
+  }
+
   el.innerHTML = displayPatients.map(p => patientHTML(p)).join('') || '<div style="padding:20px;text-align:center;color:var(--text-muted);">Tidak ada pasien yang ditugaskan kepada Anda</div>';
 
   // Update Stats Widgets
@@ -131,62 +137,64 @@ async function showPatientDetail(id) {
     </div>
   `;
 
-  // Fetch ALL PMO logs (all-time) for the patient
+  // Setup Real-time Listener for PMO logs
+  if (PATIENT_DETAIL_UNSUBSCRIBE) {
+    PATIENT_DETAIL_UNSUBSCRIBE();
+    PATIENT_DETAIL_UNSUBSCRIBE = null;
+  }
+
   const detailPmoEl = document.getElementById('detail-pmo-status');
   detailPmoEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--text-muted);">Memuat riwayat PMO...</div>';
-  
-  try {
-    const logsSnap = await db.collection('patients').doc(p.firebaseId).collection('pmo_logs')
-      .orderBy('timestamp', 'desc')
-      .get();
-    
-    const logs = [];
-    logsSnap.forEach(doc => logs.push(doc.data()));
-    currentPmoLogs = logs; // Store globally for click detail
-    
-    // Calculate today's compliance for the summary bar
-    const today = new Date().toISOString().split('T')[0];
-    const todayLogs = logs.filter(l => l.timestamp && l.timestamp.startsWith(today) && l.status === 'done');
-    const doneCount = todayLogs.length;
-    const compliance = p.pmo || Math.min(Math.round((doneCount / 3) * 100), 100);
 
-    detailPmoEl.innerHTML = `
-      <div style="margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-          <span style="font-size:13px;font-weight:600;">Kepatuhan Obat</span>
-          <span style="font-size:13px;font-weight:800;color:${compliance >= 80 ? 'var(--success)' : compliance >= 50 ? 'var(--warning)' : 'var(--danger)'};">${compliance}%</span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${compliance}%;background:${compliance >= 80 ? 'var(--success)' : compliance >= 50 ? 'var(--warning)' : 'var(--danger)'}"></div></div>
-      </div>
+  PATIENT_DETAIL_UNSUBSCRIBE = db.collection('patients').doc(p.firebaseId).collection('pmo_logs')
+    .orderBy('timestamp', 'desc')
+    .onSnapshot((logsSnap) => {
+      const logs = [];
+      logsSnap.forEach(doc => logs.push(doc.data()));
+      currentPmoLogs = logs; // Store globally for click detail
       
-      <div>
-        <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px; letter-spacing:0.05em;">
-          📋 Riwayat PMO Lengkap (${logs.length} catatan)
-        </div>
-        ${logs.length === 0
-          ? '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:20px;">Belum ada catatan PMO untuk pasien ini</div>'
-          : logs.map((l, idx) => {
-              const date = l.timestamp ? l.timestamp.split('T')[0] : '-';
-              const statusColor = l.status === 'done' ? 'var(--success)' : 'var(--warning)';
-              const statusIcon = l.status === 'done' ? '✅' : '⏳';
-              return `
-                <div onclick="showPmoLogDetail(${idx})" style="padding:10px 12px; background:var(--bg); border-radius:10px; margin-bottom:8px; font-size:12px; border-left:3px solid ${statusColor}; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <span style="font-weight:700; color:var(--text-dark);">${statusIcon} ${l.recordedBy || 'Petugas'}</span>
-                    <span style="font-size:11px; color:var(--text-muted);">${date} • ${l.waktu || '-'} ›</span>
-                  </div>
-                  <div style="color:var(--text-muted); font-size:11px; margin-top:2px;">${l.recorderRole ? '(' + l.recorderRole + ')' : ''} ${l.catatan || 'Mencatat konsumsi obat'}</div>
-                </div>
-              `;
-            }).join('')
-        }
-      </div>
-    `;
+      // Calculate today's compliance for the summary bar
+      const today = new Date().toISOString().split('T')[0];
+      const todayLogs = logs.filter(l => l.timestamp && l.timestamp.startsWith(today) && l.status === 'done');
+      const doneCount = todayLogs.length;
+      const compliance = p.pmo || Math.min(Math.round((doneCount / 3) * 100), 100);
 
-  } catch (err) {
-    console.error("Failed to fetch PMO logs", err);
-    detailPmoEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:11px; color:var(--danger);">Gagal memuat riwayat PMO</div>';
-  }
+      detailPmoEl.innerHTML = `
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:13px;font-weight:600;">Kepatuhan Obat</span>
+            <span style="font-size:13px;font-weight:800;color:${compliance >= 80 ? 'var(--success)' : compliance >= 50 ? 'var(--warning)' : 'var(--danger)'};">${compliance}%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${compliance}%;background:${compliance >= 80 ? 'var(--success)' : compliance >= 50 ? 'var(--warning)' : 'var(--danger)'}"></div></div>
+        </div>
+        
+        <div>
+          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px; letter-spacing:0.05em;">
+            📋 Riwayat PMO Lengkap (${logs.length} catatan)
+          </div>
+          ${logs.length === 0
+            ? '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:20px;">Belum ada catatan PMO untuk pasien ini</div>'
+            : logs.map((l, idx) => {
+                const date = l.timestamp ? l.timestamp.split('T')[0] : '-';
+                const statusColor = l.status === 'done' ? 'var(--success)' : 'var(--warning)';
+                const statusIcon = l.status === 'done' ? '✅' : '⏳';
+                return `
+                  <div onclick="showPmoLogDetail(${idx})" style="padding:10px 12px; background:var(--bg); border-radius:10px; margin-bottom:8px; font-size:12px; border-left:3px solid ${statusColor}; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <span style="font-weight:700; color:var(--text-dark);">${statusIcon} ${l.recordedBy || 'Petugas'}</span>
+                      <span style="font-size:11px; color:var(--text-muted);">${date} • ${l.waktu || '-'} ›</span>
+                    </div>
+                    <div style="color:var(--text-muted); font-size:11px; margin-top:2px;">${l.recorderRole ? '(' + l.recorderRole + ')' : ''} ${l.catatan || 'Mencatat konsumsi obat'}</div>
+                  </div>
+                `;
+              }).join('')
+          }
+        </div>
+      `;
+    }, (err) => {
+      console.error("Failed to fetch PMO logs", err);
+      detailPmoEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:11px; color:var(--danger);">Gagal memuat riwayat PMO</div>';
+    });
 
   // Role-based action buttons
   const editBtn = document.getElementById('btn-edit-pasien');
@@ -228,8 +236,15 @@ function showPmoLogDetail(idx) {
 function renderDashboardPMO() {
   const session = getCurrentSession();
   const el = document.getElementById('dashboard-pmo');
+  if (!el) return;
+  
   // Group by patient to show patient-centric view
   let patientsWithPmo = PATIENTS.filter(p => p.obat); 
+
+  if (!SYNC_STATUS.isReady && patientsWithPmo.length === 0) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">⌛ Menyiapkan jadwal hari ini...</div>';
+    return;
+  }
   
   if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
     const userDesa = session?.desa || session?.alamat;
@@ -265,6 +280,16 @@ async function renderDashboardGejalaBaru() {
   if (!el || (currentRole !== 'pemegang' && currentRole !== 'admin')) return;
 
   el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">⌛ Memuat data...</div>';
+
+  if (!PATIENTS || PATIENTS.length === 0) {
+    // If patients are still loading or empty, show a more descriptive message
+    if (!SYNC_STATUS.collections.patients) {
+        el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">⌛ Menunggu sinkronisasi data pasien...</div>';
+    } else {
+        el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">✅ Tidak ada data pasien untuk diproses</div>';
+    }
+    return;
+  }
 
   try {
     const patientsWithId = PATIENTS.filter(p => p.firebaseId);
@@ -339,6 +364,10 @@ let dashboardChartInstance = null;
 async function renderBarChart() {
   const ctx = document.getElementById('dashboardChart');
   if (!ctx || !window.Chart) return;
+
+  if (!SYNC_STATUS.isReady && PATIENTS.length === 0) {
+    return; // Wait for data sync
+  }
 
   if (dashboardChartInstance) {
     dashboardChartInstance.destroy();
@@ -450,6 +479,13 @@ async function renderBarChart() {
 
 function renderStockAlerts() {
   const el = document.getElementById('stock-alerts');
+  if (!el) return;
+
+  if (!SYNC_STATUS.isReady && DRUGS.length === 0) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">⌛ Memeriksa stok...</div>';
+    return;
+  }
+
   const critical = DRUGS.filter(d => d.stok < d.min);
   el.innerHTML = critical.map(d => `
     <div class="stock-alert" style="margin-bottom:10px;">
@@ -607,9 +643,10 @@ async function renderChat() {
   if (!session) return;
   
   const contactEl = document.getElementById('chat-contact-list');
-  contactEl.innerHTML = '<div style="padding:20px; text-align:center; font-size:12px; color:var(--text-muted);">Memuat riwayat chat...</div>';
-  
-  showContactList();
+  // Only show selection view if nothing is selected
+  if (!selectedContactId) {
+    showContactList();
+  }
 
   try {
     const snapshot = await db.collection('chats')
@@ -619,11 +656,11 @@ async function renderChat() {
     if (snapshot.empty) {
       globalChatContacts = [];
       contactEl.innerHTML = `
-        <div style="padding:40px 20px; text-align:center;">
-          <div style="font-size:32px; margin-bottom:12px;">💬</div>
-          <div style="font-size:13px; font-weight:700; color:var(--text);">Belum ada percakapan</div>
-          <div style="font-size:11px; color:var(--text-muted); margin-top:4px; margin-bottom:16px;">Mulai chat baru dengan menekan tombol + di atas</div>
-          <button class="btn btn-sm" onclick="openNewChatList()" style="background:var(--navy); color:white; padding:6px 16px; border-radius:20px;">Mulai Chat</button>
+        <div style="padding:60px 20px; text-align:center;">
+          <div style="font-size:48px; margin-bottom:16px; opacity:0.8;">💬</div>
+          <div style="font-size:15px; font-weight:700; color:var(--text); margin-bottom:8px;">Belum ada percakapan</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:24px; max-width:240px; margin-inline:auto; line-height:1.5;">Mulai percakapan baru dengan petugas atau dokter sekarang.</div>
+          <button class="btn" onclick="openNewChatList()" style="background:var(--navy); color:white; padding:10px 24px; border-radius:12px; font-weight:700; font-size:13px; border:none; cursor:pointer; box-shadow:0 4px 12px rgba(11,45,78,0.2);">+ Mulai Chat Baru</button>
         </div>
       `;
       return;
@@ -655,18 +692,21 @@ function renderFilteredContacts(contacts) {
     return;
   }
 
-  contactEl.innerHTML = contacts.map(c => `
-    <div class="contact-item" onclick="selectContact('${c.id}', '${c.name}')">
-      <div class="header-avatar" style="font-size:14px; width:46px; height:46px; flex-shrink:0;">${c.name.charAt(0)}</div>
-      <div class="c-info" style="min-width:0; flex:1;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div class="c-name" style="font-size:14px; font-weight:700; color:var(--text);">${c.name}</div>
-          <div class="c-time" style="font-size:11px; color:var(--text-muted);">${c.time || ''}</div>
+  contactEl.innerHTML = contacts.map(c => {
+    const isActive = c.id === selectedContactId ? 'active' : '';
+    return `
+      <div class="contact-item ${isActive}" onclick="selectContact('${c.id}', '${c.name}')">
+        <div class="header-avatar" style="font-size:14px; width:46px; height:46px; flex-shrink:0;">${c.name.charAt(0)}</div>
+        <div class="c-info" style="min-width:0; flex:1;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="c-name" style="font-size:14px; font-weight:700; color:var(--text);">${c.name}</div>
+            <div class="c-time" style="font-size:11px; color:var(--text-muted);">${c.time || ''}</div>
+          </div>
+          <div class="c-preview" style="font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px;">${c.snippet || ''}</div>
         </div>
-        <div class="c-preview" style="font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px;">${c.snippet || ''}</div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function filterChatContacts(query) {
@@ -843,12 +883,32 @@ function showContactList() {
   }
   selectedContactId = null;
 
-  document.getElementById('chat-contact-view').style.display = 'flex';
-  document.getElementById('chat-active-view').style.display = 'none';
-  document.getElementById('chat-back-btn').style.display = 'none';
-  document.getElementById('chat-header-avatar').style.display = 'none';
-  document.getElementById('chat-header-name').textContent = 'Chat Terintegrasi';
-  document.getElementById('chat-header-status').style.display = 'none';
+  const isDesktop = window.innerWidth > 768;
+
+  if (isDesktop) {
+    document.getElementById('chat-contact-view').style.display = 'flex';
+    document.getElementById('chat-active-view').style.display = 'flex';
+    document.getElementById('chat-active-view').innerHTML = `
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); background:#fafbfd; height:100%;">
+        <div style="width:80px; height:80px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(0,0,0,0.04); margin-bottom:20px;">
+          <span style="font-size:32px;">📩</span>
+        </div>
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px;">Pesan Anda</div>
+        <div style="font-size:13px; opacity:0.7; max-width:280px; text-align:center; line-height:1.6;">Pilih salah satu kontak di sisi kiri untuk mulai mengirim pesan atau melihat riwayat.</div>
+      </div>
+    `;
+    document.getElementById('chat-header-name').textContent = 'Chat Terintegrasi';
+    document.getElementById('chat-header-avatar').style.display = 'none';
+    document.getElementById('chat-header-status').style.display = 'none';
+    document.getElementById('chat-back-btn').style.display = 'none';
+  } else {
+    document.getElementById('chat-contact-view').style.display = 'flex';
+    document.getElementById('chat-active-view').style.display = 'none';
+    document.getElementById('chat-back-btn').style.display = 'none';
+    document.getElementById('chat-header-avatar').style.display = 'none';
+    document.getElementById('chat-header-name').textContent = 'Chat Terintegrasi';
+    document.getElementById('chat-header-status').style.display = 'none';
+  }
 }
 
 function selectContact(id, name) {
@@ -856,14 +916,48 @@ function selectContact(id, name) {
   selectedContactName = name;
   const session = getCurrentSession();
   
-  document.getElementById('chat-back-btn').style.display = 'block';
+  const isDesktop = window.innerWidth > 768;
+
   document.getElementById('chat-avatar-text').textContent = name.charAt(0);
   document.getElementById('chat-header-avatar').style.display = 'flex';
   document.getElementById('chat-header-name').textContent = name;
   document.getElementById('chat-header-status').style.display = 'block';
+
+  // Refresh sidebar highlighting
+  if (globalChatContacts && globalChatContacts.length > 0) {
+    renderFilteredContacts(globalChatContacts);
+  }
   
-  document.getElementById('chat-contact-view').style.display = 'none';
+  if (isDesktop) {
+    document.getElementById('chat-contact-view').style.display = 'flex';
+    document.getElementById('chat-back-btn').style.display = 'none';
+  } else {
+    document.getElementById('chat-contact-view').style.display = 'none';
+    document.getElementById('chat-back-btn').style.display = 'block';
+  }
+  
   document.getElementById('chat-active-view').style.display = 'flex';
+  
+  // Re-inject the original Chat View HTML if it was replaced by placeholder on desktop
+  if (isDesktop && !document.getElementById('chat-messages-scroll')) {
+      // Re-render chat view shell
+      document.getElementById('chat-active-view').innerHTML = `
+        <div class="messages-scroll" id="chat-messages-scroll"></div>
+        <div id="chat-attachment-preview" style="display:none; align-items:center; justify-content:space-between; padding:8px 16px; background:var(--bg); border-top:1.5px solid var(--border); font-size:11px; color:var(--navy);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>📎</span>
+            <span id="chat-attachment-name" style="font-weight:700; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">file.jpg</span>
+          </div>
+          <button onclick="clearChatAttachment()" style="border:none; background:none; color:var(--danger); cursor:pointer; font-weight:700; padding:4px;">✕</button>
+        </div>
+        <div class="input-area">
+          <input type="file" id="chat-file-input" style="display:none;" onchange="handleChatFileSelect(this)">
+          <button class="header-back" onclick="document.getElementById('chat-file-input').click()" title="Lampirkan file">📎</button>
+          <textarea class="chat-input" id="chat-textarea" placeholder="Ketik pesan disini..." rows="1" oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'" onkeypress="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendChat(); }"></textarea>
+          <button class="icon-btn" style="background:var(--navy); color:white; width:38px; height:38px; border-radius:50%;" onclick="sendChat()">➤</button>
+        </div>
+      `;
+  }
 
   const normalizedMyId = session.username.trim().toLowerCase();
   const normalizedOtherId = id.trim().toLowerCase();
@@ -1009,6 +1103,38 @@ function renderNotifications() {
 }
 
 // ============ STOCK ============
+let editingStokFirebaseId = null;
+
+function openModalStok(drug = null) {
+  editingStokFirebaseId = null;
+  document.getElementById('stok-nama-input').value = '';
+  document.getElementById('stok-jumlah-input').value = '';
+  document.getElementById('stok-min-input').value = '50';
+  document.getElementById('stok-exp-input').value = '';
+  document.getElementById('stok-vendor-input').value = '';
+  const titleEl = document.querySelector('#modal-stok .modal-title');
+  if (titleEl) titleEl.textContent = 'Tambah Stok Obat';
+  const btnEl = document.querySelector('button[onclick="simpanStok()"]');
+  if (btnEl) btnEl.textContent = 'Simpan Stok';
+  openModal('modal-stok');
+}
+
+function openModalStokForEdit(firebaseId) {
+  const drug = DRUGS.find(d => d.firebaseId === firebaseId);
+  if (!drug || !drug.firebaseId) return;
+  editingStokFirebaseId = drug.firebaseId;
+  document.getElementById('stok-nama-input').value = drug.name || '';
+  document.getElementById('stok-jumlah-input').value = drug.stok ?? '';
+  document.getElementById('stok-min-input').value = drug.min ?? '50';
+  document.getElementById('stok-exp-input').value = drug.kadaluarsa || '';
+  document.getElementById('stok-vendor-input').value = drug.pemasok || '';
+  const titleEl = document.querySelector('#modal-stok .modal-title');
+  if (titleEl) titleEl.textContent = 'Edit Stok Obat';
+  const btnEl = document.querySelector('button[onclick="simpanStok()"]');
+  if (btnEl) btnEl.textContent = 'Simpan Perubahan';
+  openModal('modal-stok');
+}
+
 function renderStokFull() {
   const alertEl = document.getElementById('stock-alert-banner');
   const listEl = document.getElementById('stok-list');
@@ -1021,7 +1147,7 @@ function renderStokFull() {
         <div class="alert-title">Stok Kritis: ${d.name}</div>
         <div class="alert-sub">Sisa ${d.stok} tablet | Min: ${d.min} tablet | Pemasok: ${d.pemasok}</div>
       </div>
-      <button class="alert-action" onclick="openModal('modal-stok')">Restock Sekarang</button>
+      <button class="alert-action" onclick="openModalStok()">Restock Sekarang</button>
     </div>
   `).join('');
 
@@ -1043,7 +1169,8 @@ function renderStokFull() {
         <td data-label="Status" style="padding:14px 12px;text-align:center;"><span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;background:${isLow ? '#fee2e2' : '#d1fae5'};color:${isLow ? '#991b1b' : '#065f46'};">${isLow ? '⚠ Kritis' : '✅ Aman'}</span></td>
         <td data-label="Kadaluarsa" style="padding:14px 12px;text-align:center;font-size:13px;color:var(--text-muted);">${d.kadaluarsa}</td>
         <td data-label="Aksi" style="padding:14px 12px;text-align:center;">
-          <button class="btn btn-danger" style="padding:4px 8px;font-size:10px;border-radius:6px;min-width:auto;" onclick="hapusStok('${d.name}')">Hapus</button>
+          <button class="btn btn-primary" style="padding:4px 8px;font-size:10px;border-radius:6px;min-width:auto;margin-right:4px;" onclick="openModalStokForEdit('${(d.firebaseId || '').replace(/'/g, "\\'")}')">Edit</button>
+          <button class="btn btn-danger" style="padding:4px 8px;font-size:10px;border-radius:6px;min-width:auto;" onclick="hapusStok('${(d.firebaseId || '').replace(/'/g, "\\'")}')">Hapus</button>
         </td>
       </tr>`;
     }).join('')}</tbody></table></div>`;
@@ -1496,6 +1623,145 @@ function downloadReportExcel() {
   showToast('✅ Laporan berhasil diekspor ke Excel!', 'success');
 }
 
+/**
+ * Download a sample CSV template for patient import
+ */
+function downloadCsvTemplate() {
+  const headers = ['Nama Pasien', 'Usia', 'Jenis Kelamin (L/P)', 'Diagnosis', 'Status (Pulih/Relapse/Monitor)', 'Obat Utama', 'Pendamping', 'Alamat', 'Tanggal Daftar (YYYY-MM-DD)'];
+  const sampleData = ['Budi Santoso', '45', 'L', 'Skizofrenia', 'Monitor', 'Risperidone 2mg', 'Istri', 'Desa Kokop', '2024-05-20'];
+  const csvContent = '\uFEFF' + [
+    headers.map(h => `"${h}"`).join(','),
+    sampleData.map(d => `"${d}"`).join(',')
+  ].join('\r\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = "template_import_pasien.csv";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Handle CSV file selection and reading
+ */
+function handleCSVImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const text = e.target.result;
+    await processCSVData(text);
+    input.value = ''; // Reset input
+  };
+  reader.onerror = () => showToast('❌ Gagal membaca file', 'error');
+  reader.readAsText(file);
+}
+
+/**
+ * Parse CSV text and upload to Firestore
+ */
+async function processCSVData(csvText) {
+  try {
+    // Basic CSV parser that handles quotes
+    const parseCSVLine = (line) => {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+
+    const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
+    if (lines.length < 2) {
+      showToast('❌ File CSV kosong atau tidak valid', 'error');
+      return;
+    }
+
+    const headers = parseCSVLine(lines[0]);
+    const dataRows = lines.slice(1);
+    
+    showToast(`⏳ Mengimpor ${dataRows.length} pasien...`, 'info');
+    
+    let importedCount = 0;
+    const batch = db.batch();
+
+    for (const row of dataRows) {
+      const values = parseCSVLine(row);
+      if (values.length < headers.length) continue;
+
+      const pData = {};
+      headers.forEach((header, index) => {
+        const val = values[index];
+        if (!val) return;
+
+        const h = header.toLowerCase();
+        if (h.includes('nama')) pData.name = val;
+        else if (h.includes('usia')) pData.age = parseInt(val) || 0;
+        else if (h.includes('jenis kelamin')) pData.gender = val.toUpperCase().startsWith('L') ? 'L' : 'P';
+        else if (h.includes('diagnosis')) pData.diagnosis = val;
+        else if (h.includes('status')) {
+          const s = val.toLowerCase();
+          if (s.includes('pulih')) pData.status = 'pulih';
+          else if (s.includes('relapse')) pData.status = 'relapse';
+          else pData.status = 'monitor';
+        }
+        else if (h.includes('obat')) pData.obat = val;
+        else if (h.includes('pendamping')) pData.pendamping = val;
+        else if (h.includes('alamat')) pData.alamat = val;
+        else if (h.includes('tanggal daftar')) {
+          // Attempt to parse YYYY-MM-DD
+          const d = new Date(val);
+          if (!isNaN(d.getTime())) {
+            pData.createdAt = d.toISOString();
+          }
+        }
+      });
+
+      if (!pData.name) continue;
+
+      // Add metadata
+      const newDocRef = db.collection('patients').doc();
+      pData.firebaseId = newDocRef.id;
+      pData.createdAt = pData.createdAt || new Date().toISOString();
+      pData.lastUpdate = new Date().toISOString();
+      pData.pmo = 0; 
+
+      batch.set(newDocRef, pData);
+      importedCount++;
+    }
+
+    await batch.commit();
+    showToast(`✅ Berhasil mengimpor ${importedCount} pasien!`, 'success');
+    
+    // Refresh app state
+    if (typeof loadDataFromFirestore === 'function') {
+      await loadDataFromFirestore();
+      renderFullPatients();
+      renderDashboardPatients();
+      renderLaporan();
+    }
+  } catch (err) {
+    console.error("CSV Import Error:", err);
+    showToast('❌ Gagal mengimpor data: ' + err.message, 'error');
+  }
+}
+
 let reportChartInstance = null;
 // Historical report calculation moved to updateReportChart
 
@@ -1674,8 +1940,11 @@ function renderProfil() {
         <div style="margin-top:24px; padding:16px; border:1px solid #fee2e2; border-radius:12px; background:#fef2f2;">
           <div style="font-weight:700; color:#b91c1c; font-size:14px; margin-bottom:8px;">🛠️ Area Terlarang (Superadmin)</div>
           <div style="font-size:12px; color:#7f1d1d; margin-bottom:12px;">Fitur ini akan menghapus SELURUH data pasien, jadwal, stok obat, dan chat secara permanen.</div>
-          <button class="btn btn-danger" style="width:100%; font-size:13px; padding:10px;" onclick="resetDatabaseToEmpty()">
-            ⚠️ Kosongkan Seluruh Data Aplikasi
+          <button class="btn btn-danger" style="width:100%; font-size:13px; padding:10px; margin-bottom:8px;" onclick="resetDatabaseToEmpty()">
+            ⚠️ Kosongkan Seluruh Data Dasar (Kecuali Akun)
+          </button>
+          <button class="btn" style="width:100%; font-size:13px; padding:10px; background:#f59e0b; color:white; border:none; border-radius:8px; cursor:pointer;" onclick="window.forceSeed=true; window.seedDefaultUsers().then(() => { showToast('✅ Akun default berhasil dipulihkan!', 'success'); setTimeout(() => window.location.reload(), 1500); })">
+            ♻️ Pulihkan Seluruh Akun Default
           </button>
         </div>
       `;
@@ -2188,9 +2457,6 @@ async function simpanStok() {
   if (btn) { btn.disabled = true; btn.innerText = '⌛ Menyimpan...'; }
 
   try {
-    // Check if drug already exists in our local list (which has firebaseId)
-    const existingDrug = DRUGS.find(d => d.name.toLowerCase() === name.toLowerCase());
-    
     const drugData = {
       name: name,
       stok: jumlah,
@@ -2200,19 +2466,23 @@ async function simpanStok() {
       lastUpdated: new Date().toISOString()
     };
 
-    if (existingDrug && existingDrug.firebaseId) {
-      // Update existing
-      await db.collection('drugs').doc(existingDrug.firebaseId).update(drugData);
+    if (editingStokFirebaseId) {
+      await db.collection('drugs').doc(editingStokFirebaseId).update(drugData);
       showToast('✅ Stok obat berhasil diperbarui!', 'success');
     } else {
-      // Add new
-      await db.collection('drugs').add(drugData);
-      showToast('✅ Obat baru berhasil ditambahkan!', 'success');
+      const existingDrug = DRUGS.find(d => d.name.toLowerCase() === name.toLowerCase());
+      if (existingDrug && existingDrug.firebaseId) {
+        await db.collection('drugs').doc(existingDrug.firebaseId).update(drugData);
+        showToast('✅ Stok obat berhasil diperbarui!', 'success');
+      } else {
+        await db.collection('drugs').add(drugData);
+        showToast('✅ Obat baru berhasil ditambahkan!', 'success');
+      }
     }
 
     closeModal('modal-stok');
-    
-    // Reset form
+    editingStokFirebaseId = null;
+
     document.getElementById('stok-nama-input').value = '';
     document.getElementById('stok-jumlah-input').value = '';
     document.getElementById('stok-min-input').value = '';
@@ -2227,16 +2497,21 @@ async function simpanStok() {
   }
 }
 
-function hapusStok(name) {
-  if(confirm('Hapus obat ini dari inventaris?')) {
-    const idx = DRUGS.findIndex(d => d.name === name);
-    if(idx > -1) {
-      DRUGS.splice(idx, 1);
-      renderStokFull();
-      if(typeof renderStockAlerts === 'function') renderStockAlerts();
-      if(typeof renderDashboardPMO === 'function') renderDashboardPMO(); // some dashboard parts might use drugs
-      showToast('🗑️ Obat berhasil dihapus', 'success');
-    }
+async function hapusStok(firebaseId) {
+  if (!confirm('Hapus obat ini dari inventaris? Penghapusan bersifat permanen.')) return;
+  if (!firebaseId) {
+    showToast('❌ ID obat tidak valid', 'error');
+    return;
+  }
+  try {
+    await db.collection('drugs').doc(firebaseId).delete();
+    showToast('🗑️ Obat berhasil dihapus secara permanen', 'success');
+    renderStokFull();
+    if (typeof renderStockAlerts === 'function') renderStockAlerts();
+    if (typeof renderDashboardPMO === 'function') renderDashboardPMO();
+  } catch (e) {
+    console.error('Failed to delete drug:', e);
+    showToast('❌ Gagal menghapus obat', 'error');
   }
 }
 

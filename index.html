@@ -371,7 +371,7 @@
       <div class="page" id="page-stok-obat">
         <div class="section-header" style="margin-bottom:20px;">
           <div class="section-title" style="font-size:20px;">📦 Manajemen Stok Obat</div>
-          <button class="btn btn-primary" onclick="openModal('modal-stok')">+ Tambah Stok</button>
+          <button class="btn btn-primary" onclick="openModalStok()">+ Tambah Stok</button>
         </div>
         <div id="stock-alert-banner"></div>
         <div class="card">
@@ -405,7 +405,12 @@
       <div class="page" id="page-laporan">
         <div class="section-header" style="margin-bottom:20px;">
           <div class="section-title" style="font-size:20px;">📊 Laporan & Statistik</div>
-          <button class="btn btn-accent" onclick="downloadReportExcel()">📥 Unduh Excel</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" style="font-size:12px;padding:8px 12px;" onclick="downloadCsvTemplate()">📄 Template CSV</button>
+            <button class="btn btn-accent" style="font-size:12px;padding:8px 12px;" onclick="document.getElementById('csv-import-input').click()">📤 Import Pasien</button>
+            <button class="btn btn-primary" style="font-size:12px;padding:8px 12px;" onclick="downloadReportExcel()">⬇ Ekspor CSV</button>
+          </div>
+          <input type="file" id="csv-import-input" accept=".csv" style="display:none;" onchange="handleCSVImport(this)">
         </div>
         <div class="grid-3">
           <div class="card">
@@ -763,51 +768,54 @@
       </div>
     </div>
 
-    <!-- Contact View -->
-    <div class="contact-view" id="chat-contact-view">
-      <div style="padding:12px 16px; border-bottom:1.5px solid var(--border);">
-        <div style="position:relative;">
-          <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:12px;">🔍</span>
-          <input 
-            type="text" 
-            placeholder="Cari kontak..." 
-            oninput="filterChatContacts(this.value)"
-            style="width:100%; border:none; background:var(--bg); padding:8px 12px 8px 32px; border-radius:12px; font-size:12px; outline:none;"
-          >
+    <!-- Body Container (Two-Pane) -->
+    <div class="chat-modal-body">
+      <!-- Contact View -->
+      <div class="contact-view" id="chat-contact-view">
+        <div style="padding:12px 16px; border-bottom:1.5px solid var(--border);">
+          <div style="position:relative;">
+            <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:12px;">🔍</span>
+            <input 
+              type="text" 
+              placeholder="Cari kontak..." 
+              oninput="filterChatContacts(this.value)"
+              style="width:100%; border:none; background:var(--bg); padding:8px 12px 8px 32px; border-radius:12px; font-size:12px; outline:none;"
+            >
+          </div>
+        </div>
+        <div class="contact-scroll" id="chat-contact-list">
+          <!-- Rendered by JS -->
         </div>
       </div>
-      <div class="contact-scroll" id="chat-contact-list">
-        <!-- Rendered by JS -->
-      </div>
-    </div>
 
-    <!-- Chat View -->
-    <div class="chat-view" id="chat-active-view" style="display:none;">
-      <div class="messages-scroll" id="chat-messages-scroll">
-        <!-- Rendered by JS -->
-      </div>
-
-      <!-- File Preview Indicator -->
-      <div id="chat-attachment-preview" style="display:none; align-items:center; justify-content:space-between; padding:8px 16px; background:var(--bg); border-top:1.5px solid var(--border); font-size:11px; color:var(--navy);">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span>📎</span>
-          <span id="chat-attachment-name" style="font-weight:700; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">file.jpg</span>
+      <!-- Chat View -->
+      <div class="chat-view" id="chat-active-view" style="display:none;">
+        <div class="messages-scroll" id="chat-messages-scroll">
+          <!-- Rendered by JS -->
         </div>
-        <button onclick="clearChatAttachment()" style="border:none; background:none; color:var(--danger); cursor:pointer; font-weight:700; padding:4px;">✕</button>
-      </div>
 
-      <div class="input-area">
-        <input type="file" id="chat-file-input" style="display:none;" onchange="handleChatFileSelect(this)">
-        <button class="header-back" onclick="document.getElementById('chat-file-input').click()" title="Lampirkan file">📎</button>
-        <textarea
-          class="chat-input"
-          id="chat-textarea"
-          placeholder="Ketik pesan disini..."
-          rows="1"
-          oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"
-          onkeypress="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendChat(); }"
-        ></textarea>
-        <button class="icon-btn" style="background:var(--navy); color:white; width:38px; height:38px; border-radius:50%;" onclick="sendChat()">➤</button>
+        <!-- File Preview Indicator -->
+        <div id="chat-attachment-preview" style="display:none; align-items:center; justify-content:space-between; padding:8px 16px; background:var(--bg); border-top:1.5px solid var(--border); font-size:11px; color:var(--navy);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>📎</span>
+            <span id="chat-attachment-name" style="font-weight:700; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">file.jpg</span>
+          </div>
+          <button onclick="clearChatAttachment()" style="border:none; background:none; color:var(--danger); cursor:pointer; font-weight:700; padding:4px;">✕</button>
+        </div>
+
+        <div class="input-area">
+          <input type="file" id="chat-file-input" style="display:none;" onchange="handleChatFileSelect(this)">
+          <button class="header-back" onclick="document.getElementById('chat-file-input').click()" title="Lampirkan file">📎</button>
+          <textarea
+            class="chat-input"
+            id="chat-textarea"
+            placeholder="Ketik pesan disini..."
+            rows="1"
+            oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"
+            onkeypress="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendChat(); }"
+          ></textarea>
+          <button class="icon-btn" style="background:var(--navy); color:white; width:38px; height:38px; border-radius:50%;" onclick="sendChat()">➤</button>
+        </div>
       </div>
     </div>
   </div>
@@ -971,6 +979,7 @@
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics-compat.js" defer></script>
 
 <!-- ==================== SCRIPTS ==================== -->
 <!-- Load order: config → data → ui → auth → pages → app -->

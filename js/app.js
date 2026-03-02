@@ -10,19 +10,17 @@ window.onload = () => {
   // 1. Initial Data check/sync (Starts listeners)
   if (typeof loadDataFromFirestore === "function") loadDataFromFirestore();
 
-  // 2. Background seeding and maintenance
-  (async () => {
-    try {
-      //  if (typeof seedDefaultUsers === 'function') await seedDefaultUsers();
-      //  if (typeof seedDefaultData === 'function') await seedDefaultData();
-    } catch (e) {
-      console.error("Background tasks failed:", e);
-    }
-  })();
+  // 2. No mock data seeding - data from Firestore only
 
-  // 3. UI Entrance (Faster transition for LCP)
+  // 3. UI Entrance (Wait for data sync)
   const session = getCurrentSession();
-  const initUI = () => {
+  const initUI = async () => {
+    // Wait for at least the critical data to be synced from Firestore
+    if (typeof waitForInitialSync === "function") {
+      console.log("Waiting for initial sync...");
+      await waitForInitialSync();
+    }
+
     const splash = document.getElementById("splash");
     if (splash) splash.classList.add("hide");
 
@@ -31,6 +29,7 @@ window.onload = () => {
       const roleSel = document.getElementById("role-select");
       if (walk) walk.classList.add("hide");
       if (roleSel) roleSel.classList.add("hide");
+      
       enterApp(
         session.role,
         session.nama,
@@ -42,8 +41,8 @@ window.onload = () => {
     }
   };
 
-  // Run UI entrance slightly after data load starts
-  setTimeout(initUI, 100);
+  // Run UI entrance
+  initUI();
 
   // Live time updater
   setInterval(() => {
@@ -236,6 +235,12 @@ function buildNav(role) {
 }
 
 function showPage(page) {
+  // Detach patient detail listener if navigating away
+  if (page !== 'patient-detail' && typeof PATIENT_DETAIL_UNSUBSCRIBE === 'function') {
+    PATIENT_DETAIL_UNSUBSCRIBE();
+    PATIENT_DETAIL_UNSUBSCRIBE = null;
+  }
+
   // If the page is "chat" or "notifikasi", open the modal instead
   if (page === "chat") {
     openModal("modal-chat");

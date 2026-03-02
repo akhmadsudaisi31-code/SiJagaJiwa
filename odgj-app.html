@@ -687,7 +687,12 @@
       <div class="page" id="page-laporan">
         <div class="section-header" style="margin-bottom:20px;">
           <div class="section-title" style="font-size:20px;">📊 Laporan & Statistik</div>
-          <button class="btn btn-accent" onclick="showToast('✅ Laporan berhasil diunduh!','success')">⬇ Unduh PDF</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" style="font-size:12px;padding:8px 12px;" onclick="downloadCsvTemplate()">📄 Template CSV</button>
+            <button class="btn btn-accent" style="font-size:12px;padding:8px 12px;" onclick="document.getElementById('csv-import-input').click()">📤 Import Pasien</button>
+            <button class="btn btn-primary" style="font-size:12px;padding:8px 12px;" onclick="downloadReportExcel()">⬇ Ekspor CSV</button>
+          </div>
+          <input type="file" id="csv-import-input" accept=".csv" style="display:none;" onchange="handleCSVImport(this)">
         </div>
         <div class="grid-3">
           <div class="card">
@@ -1059,13 +1064,8 @@ function showPatientDetail(id) {
 
 function renderDashboardPMO() {
   const el = document.getElementById('dashboard-pmo');
-  const items = [
-    { time:'07:00', drug:'Haloperidol 5mg', patient:'Siti Rahayu', checked:true },
-    { time:'07:00', drug:'Lithium 400mg', patient:'Ahmad Supriadi', checked:true },
-    { time:'12:00', drug:'Fluoxetine 20mg', patient:'Dewi Lestari', checked:false },
-    { time:'19:00', drug:'Clozapine 25mg', patient:'Nurul Hidayah', checked:false },
-  ];
-  el.innerHTML = items.map((item, i) => `
+  const items = []; // No mock data - data from Firestore only
+  el.innerHTML = items.length ? items.map((item, i) => `
     <div class="pmo-item">
       <div class="pmo-time">${item.time}</div>
       <div>
@@ -1074,7 +1074,7 @@ function renderDashboardPMO() {
       </div>
       <button class="check-btn ${item.checked?'checked':''}" onclick="togglePMO(this, ${i})">${item.checked?'✓':''}</button>
     </div>
-  `).join('');
+  `).join('') : '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Belum ada data PMO. Tambahkan pasien dan catatan PMO untuk melihat di sini.</div>';
 }
 
 function togglePMO(btn, i) {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sijagajiwa-v3';
+const CACHE_NAME = 'sijagajiwa-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -42,9 +42,29 @@ self.addEventListener('activate', (event) => {
 
 // ============ FETCH ============
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cacheRes) => cacheRes || fetch(event.request))
-  );
+  const url = new URL(event.request.url);
+  
+  // For local app scripts/styles, use Network-First to ensure updates are seen
+  const isLocalAsset = event.request.url.includes(self.location.origin) && 
+                       (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html'));
+
+  if (isLocalAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkRes) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkRes.clone());
+            return networkRes;
+          });
+        })
+        .catch(() => caches.match(event.request))
+    );
+  } else {
+    // For other assets (fonts, icons, CDN), use Cache-First
+    event.respondWith(
+      caches.match(event.request).then((cacheRes) => cacheRes || fetch(event.request))
+    );
+  }
 });
 
 // ============ PUSH NOTIFICATION ============

@@ -1756,30 +1756,29 @@ input:checked + .slider:before {
   .form-row {
     grid-template-columns: 1fr;
   }
-  .chat-modal-body {
-    flex-direction: column;
-  }
-  #chat-modal-box {
-    height: 98vh !important;
-    max-height: 98vh !important;
-    width: 100% !important;
-    margin: 0;
-    border-radius: 0;
-    background: #fff;
-  }
+}
+
 /* ============ CHAT MODAL OVERHAUL ============ */
-.chat-modal {
+#chat-modal-box, .chat-modal {
   width: 100%;
-  max-width: 480px;
-  height: 600px;
-  max-height: 90vh;
-  background: #fff;
+  max-width: 1000px;
+  height: 750px;
+  max-height: 85vh;
+  background: #fff !important;
   border-radius: 20px;
   box-shadow: 0 24px 80px rgba(11, 45, 78, 0.22);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  position: relative;
+}
+
+.chat-modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background: #fff !important;
 }
 
 .chat-header {
@@ -1813,11 +1812,20 @@ input:checked + .slider:before {
   background: var(--success); border: 2px solid #fff;
 }
 
-.chat-view, .contact-view {
+.contact-view {
+  width: 320px;
+  border-right: 1.5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.chat-view {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #fff;
 }
 
 .messages-scroll, .contact-scroll {
@@ -1837,6 +1845,12 @@ input:checked + .slider:before {
   margin-bottom: 4px;
 }
 .msg-row.me { flex-direction: row-reverse; }
+
+.contact-item:hover { background: var(--bg); }
+.contact-item.active {
+  background: #eef4ff;
+  border-left: 4px solid var(--navy);
+}
 
 .bubble {
   max-width: 75%;
@@ -1885,17 +1899,27 @@ input:checked + .slider:before {
 }
 
 @media (max-width: 768px) {
-  #chat-modal-box {
+  .chat-modal {
     max-width: 100% !important;
     width: 100% !important;
     height: 92vh !important;
     max-height: 92vh !important;
-    border-radius: 20px 20px 0 0 !important;
+    border-radius: 24px 24px 0 0 !important;
     position: fixed;
     bottom: 0;
     margin: 0 !important;
   }
-}
+  
+  .contact-view {
+    width: 100%;
+    border-right: none;
+  }
+
+  /* In mobile, we only show one at a time */
+  .contact-view[style*="display: none"],
+  .chat-view[style*="display: none"] {
+    display: none !important;
+  }
 
   .mobile-card-table,
   .mobile-card-table tbody,

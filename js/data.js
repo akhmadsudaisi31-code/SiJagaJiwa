@@ -1,53 +1,54 @@
 /**
  * SIODGJ - Data & Constants
- * Mock data, role configs, walkthrough steps
+ * Role configs, walkthrough steps. Data from Firestore only (no mock data).
  */
 
-// ============ ORIGINAL DATA ============
-const DEFAULT_PATIENTS = [];
-const DEFAULT_DRUGS = [];
-const DEFAULT_PICKUPS = [];
-const DEFAULT_NOTIFS = [];
-const DEFAULT_CHATS = {};
-// ============ PERSISTENT DATA ============
+// ============ PERSISTENT DATA (synced from Firestore) ============
 let PATIENTS = [];
 let DRUGS = [];
 let PICKUPS = [];
 let NOTIFS = [];
 let CHATS = {}; // Will be used per-conversation
 let CHAT_UNSUBSCRIBE = null; // Real-time listener
+let PATIENT_DETAIL_UNSUBSCRIBE = null; // Real-time listener for pmo_logs in detail view
 
 let dataLoaded = false;
 let GLOBAL_UNSUBSCRIBES = [];
 
-// Seed defaults to Firebase if empty
-async function seedDefaultData() {
-  return; // Disabled
-  const collections = [
-    { name: "patients", data: DEFAULT_PATIENTS },
-    { name: "drugs", data: DEFAULT_DRUGS },
-    { name: "pickups", data: DEFAULT_PICKUPS },
-    { name: "notifs", data: DEFAULT_NOTIFS },
-  ];
+// Track initial synchronization for each critical collection
+const CRITICAL_COLLECTIONS = ["patients", "users", "drugs", "pickups", "notifs", "chats"];
+const SYNC_STATUS = {
+  isReady: false,
+  collections: {}
+};
+CRITICAL_COLLECTIONS.forEach(c => SYNC_STATUS.collections[c] = false);
 
-  for (const col of collections) {
-    const snapshot = await db.collection(col.name).limit(1).get();
-    if (snapshot.empty) {
-      console.log(`Seeding ${col.name}...`);
-      for (const item of col.data) {
-        await db.collection(col.name).add(item);
+/**
+ * Promise that resolves when all critical collections have received their first snapshot
+ */
+function waitForInitialSync() {
+  return new Promise((resolve) => {
+    if (SYNC_STATUS.isReady) return resolve();
+    
+    const checkInterval = setInterval(() => {
+      const allLoaded = CRITICAL_COLLECTIONS.every(c => SYNC_STATUS.collections[c]);
+      if (allLoaded) {
+        clearInterval(checkInterval);
+        SYNC_STATUS.isReady = true;
+        resolve();
       }
-    }
-  }
+    }, 100);
 
-  // Chats is a map, handle slightly differently
-  const chatSnap = await db.collection("chats").limit(1).get();
-  if (chatSnap.empty) {
-    console.log("Seeding chats...");
-    for (const [contact, msgs] of Object.entries(DEFAULT_CHATS)) {
-      await db.collection("chats").doc(contact).set({ messages: msgs });
-    }
-  }
+    // Timeout fallback after 5 seconds to avoid infinite loading if a collection is empty/denied
+    setTimeout(() => {
+      if (!SYNC_STATUS.isReady) {
+        console.warn("Sync timeout reached. Resolving with partial data.");
+        clearInterval(checkInterval);
+        SYNC_STATUS.isReady = true;
+        resolve();
+      }
+    }, 5000);
+  });
 }
 
 // Start real-time synchronization for all collections
@@ -62,6 +63,18 @@ function startGlobalRealTimeSync() {
     { name: "drugs", setter: (data) => (DRUGS = data) },
     { name: "pickups", setter: (data) => (PICKUPS = data) },
     { name: "notifs", setter: (data) => (NOTIFS = data) },
+    { name: "users", setter: (data) => {
+        // Update local session if current user info changes
+        const session = getCurrentSession();
+        const myProfile = data.find(u => u.firebaseId === session?.username);
+        if (myProfile && JSON.stringify(myProfile) !== JSON.stringify(session)) {
+            console.log("Profile updated via real-time sync, updating session...");
+            const newSession = { ...session, ...myProfile };
+            localStorage.setItem('siodgj_session', JSON.stringify(newSession));
+            if (typeof syncUserUI === 'function') syncUserUI();
+        }
+    }},
+    { name: "chats", setter: (data) => (CHATS = data) },
   ];
 
   collections.forEach((col) => {
@@ -74,6 +87,11 @@ function startGlobalRealTimeSync() {
         col.setter(data);
         console.log(`Real-time update: ${col.name} (${data.length} items)`);
         
+        // Mark as loaded for initial sync tracking
+        if (SYNC_STATUS.collections.hasOwnProperty(col.name)) {
+          SYNC_STATUS.collections[col.name] = true;
+        }
+
         // Trigger UI update if app is initialized
         if (typeof initPages === "function") {
           initPages();
@@ -107,31 +125,44 @@ async function loadDataFromFirestore() {
  */
 async function resetDatabaseToEmpty(isSilent = false) {
   if (!isSilent) {
-    const isConfirmed = window.confirm("⚠️ Anda akan menghapus SELURUH data pasien, jadwal, stok obat, dan catatan PMO. Lanjutkan?");
+    const isConfirmed = window.confirm("⚠️ Anda akan menghapus data operasional (Pasien, PMO, Jadwal, Stok, Chat, & Notifikasi). Akun pengguna TETAP TERJAGA. Lanjutkan?");
     if (!isConfirmed) return;
   }
   
   const collections = ["patients", "pickups", "notifs", "chats", "drugs"];
-  console.log("Starting database reset...");
-  showToast("⏳ Sedang menghapus data...", "info");
+  console.log("Starting database reset (preserving users)...");
+  showToast("⏳ Sedang menghapus data operasional...", "info");
   
   for (const colName of collections) {
     try {
       const snapshot = await db.collection(colName).get();
-      const batch = db.batch();
       
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
+      for (const doc of snapshot.docs) {
+        // Handle Subcollections first
+        if (colName === 'patients') {
+          const logs = await doc.ref.collection('pmo_logs').get();
+          const logBatch = db.batch();
+          logs.forEach(l => logBatch.delete(l.ref));
+          await logBatch.commit();
+        }
+        if (colName === 'chats') {
+          const msgs = await doc.ref.collection('messages').get();
+          const msgBatch = db.batch();
+          msgs.forEach(m => msgBatch.delete(m.ref));
+          await msgBatch.commit();
+        }
+
+        // Delete parent doc
+        await doc.ref.delete();
+      }
       
-      await batch.commit();
-      console.log(`✅ Collection ${colName} cleared.`);
+      console.log(`✅ Collection ${colName} (and subcollections) cleared.`);
     } catch (err) {
       console.error(`❌ Failed to clear collection ${colName}:`, err);
     }
   }
   
-  showToast("✅ Berhasil! Data baru akan dimuat otomatis.", "success");
+  showToast("✅ Berhasil! Data operasional telah dibersihkan.", "success");
   setTimeout(() => window.location.reload(), 2000);
 }
 
