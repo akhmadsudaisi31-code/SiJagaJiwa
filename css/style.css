@@ -1967,3 +1967,197 @@ input:checked + .slider:before {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== MANAJEMEN AKUN ===== */
+.akun-filter-btn {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: white;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.akun-filter-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: #f0f7ff;
+}
+.akun-filter-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 3px 10px rgba(15, 76, 129, 0.3);
+}
+.user-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.user-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--uc-color, var(--primary));
+}
+.user-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  border-color: transparent;
+}
+.user-card-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.user-card-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  border: 2px solid var(--uc-color, var(--primary));
+}
+.user-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.user-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-card-username {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.user-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  background: var(--uc-color, var(--primary));
+}
+.user-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 10px;
+  min-height: 38px;
+}
+.user-card-actions {
+  display: flex;
+  gap: 8px;
+}
+.btn-edit-user {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: white;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  text-align: center;
+}
+.btn-edit-user:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15,76,129,0.25);
+}
+.btn-hapus-user {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1.5px solid #fee2e2;
+  background: #fff5f5;
+  color: var(--danger);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.btn-hapus-user:hover {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+  transform: translateY(-1px);
+}
+.akun-stat-mini {
+  background: white;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  text-align: center;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.akun-stat-mini:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+}
+.akun-stat-mini .stat-num {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+.akun-stat-mini .stat-lbl {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  #user-list-body {
+    grid-template-columns: 1fr !important;
+  }
+  .akun-filter-btn {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+}
+
+/* ===== FIELD HINTS (registration form) ===== */
+.field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}

@@ -114,86 +114,85 @@ function clearSession() {
 const DUMMY_DOMAIN = "@sijiwa-login.com";
 
 async function registerUser(role, formData) {
+  const username = formData.username.trim().toLowerCase();
+  const dummyEmail = username + DUMMY_DOMAIN;
+  const password = formData.password;
+
+  // --- Validate username format ---
+  if (!/^[a-z0-9_]{3,30}$/.test(username)) {
+    return { success: false, error: 'Username hanya boleh huruf kecil, angka, dan garis bawah (_), minimal 3 karakter.', field: 'username' };
+  }
+
+  // --- Validate password ---
+  if (password !== formData.password_confirm) {
+    return { success: false, error: 'Password dan konfirmasi password tidak cocok!', field: 'password_confirm' };
+  }
+  if (password.length < 6) {
+    return { success: false, error: 'Password minimal 6 karakter!', field: 'password' };
+  }
+
+  // --- Check if username is already taken in Firestore ---
   try {
-    const username = formData.username.trim().toLowerCase();
-    const dummyEmail = username + DUMMY_DOMAIN;
-    const password = formData.password;
-
-    // 1. Check if username is already registered (Firestore)
-    const userDocRef = db.collection('users').doc(username);
-    const doc = await userDocRef.get();
-
+    const doc = await db.collection('users').doc(username).get();
     if (doc.exists) {
-      return { success: false, error: 'Username sudah terdaftar! Gunakan username lain.' };
+      return { success: false, error: `Username "${username}" sudah digunakan. Coba username lain.`, field: 'username' };
     }
+  } catch (firestoreErr) {
+    console.error('Firestore check failed:', firestoreErr);
+    return { success: false, error: 'Gagal memeriksa ketersediaan username. Periksa koneksi internet Anda.' };
+  }
 
-    // 2. Validate password
-    if (password !== formData.password_confirm) {
-      return { success: false, error: 'Password dan konfirmasi password tidak cocok!' };
+  // --- Create Firebase Auth user via a SECONDARY app (preserves any active session) ---
+  let firebaseUid = null;
+  let secondaryApp = null;
+  try {
+    secondaryApp = firebase.initializeApp(firebaseConfig, 'register-' + Date.now());
+    const secondaryAuth = firebase.auth(secondaryApp);
+    const credential = await secondaryAuth.createUserWithEmailAndPassword(dummyEmail, password);
+    firebaseUid = credential.user.uid;
+  } catch (authErr) {
+    console.error('Auth creation error:', authErr);
+    if (authErr.code === 'auth/email-already-in-use') {
+      // Auth entry exists but Firestore profile missing — this username is taken in the auth system
+      return { success: false, error: `Username "${username}" sudah terdaftar di sistem. Coba username berbeda atau hubungi administrator.`, field: 'username' };
     }
-    if (password.length < 6) {
-      return { success: false, error: 'Password minimal 6 karakter!' };
+    if (authErr.code === 'auth/weak-password') {
+      return { success: false, error: 'Password terlalu lemah. Gunakan kombinasi huruf dan angka, minimal 6 karakter.', field: 'password' };
     }
+    if (authErr.code === 'auth/network-request-failed') {
+      return { success: false, error: 'Gagal terhubung ke server. Periksa koneksi internet Anda dan coba lagi.' };
+    }
+    return { success: false, error: 'Gagal membuat akun: ' + authErr.message };
+  } finally {
+    if (secondaryApp) {
+      try { await secondaryApp.delete(); } catch (_) {}
+    }
+  }
 
-    // 3. Create Firebase Auth User
-    const userCredential = await auth.createUserWithEmailAndPassword(dummyEmail, password);
-    const firebaseUser = userCredential.user;
-
-    // 4. Save metadata to Firestore
+  // --- Save profile to Firestore ---
+  try {
     const userProfile = {
       id: Date.now(),
-      uid: firebaseUser.uid,
+      uid: firebaseUid,
       role: role,
       ...formData,
+      username: username, // Always normalized to lowercase
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
     delete userProfile.password;
     delete userProfile.password_confirm;
 
-    await userDocRef.set(userProfile);
-    
-    // We log out immediately because they should log in again via the normal flow
-    await auth.signOut();
-    
-    return { success: true, user: userProfile };
-  } catch (error) {
-    console.error("Error registering user: ", error);
-    
-    // REPAIR MODE: If Auth account exists but Firestore profile is missing
-    if (error.code === 'auth/email-already-in-use') {
-      try {
-        const username = formData.username.trim().toLowerCase();
-        const dummyEmail = username + DUMMY_DOMAIN;
-        
-        // Try to sign in to verify the password matches
-        await auth.signInWithEmailAndPassword(dummyEmail, formData.password);
-        const firebaseUser = auth.currentUser;
-        
-        // If sign-in works, user is the legitimate owner. Repair the profile.
-        const userProfile = {
-          id: Date.now(),
-          uid: firebaseUser.uid,
-          role: role,
-          ...formData,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          repairedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        delete userProfile.password;
-        delete userProfile.password_confirm;
-
-        await db.collection('users').doc(username).set(userProfile);
-        await auth.signOut();
-        
-        return { success: true, user: userProfile, repaired: true };
-      } catch (repairError) {
-        if (repairError.code === 'auth/wrong-password') {
-          return { success: false, error: 'Username sudah terdaftar! Password yang Anda masukkan salah.' };
-        }
-        return { success: false, error: 'Gagal memulihkan akun: ' + repairError.message };
-      }
+    // Backward-compat: set legacy single-desa fields from desas array
+    if (Array.isArray(userProfile.desas) && userProfile.desas.length > 0) {
+      if (role === 'petugas') userProfile.desa = userProfile.desas[0];
+      if (role === 'pendamping') userProfile.alamat = 'Desa ' + userProfile.desas[0];
     }
-    
-    return { success: false, error: 'Gagal melakukan pendaftaran. Coba lagi: ' + error.message };
+
+    await db.collection('users').doc(username).set(userProfile);
+    return { success: true, user: userProfile };
+  } catch (writeErr) {
+    console.error('Firestore write error:', writeErr);
+    return { success: false, error: 'Akun berhasil dibuat tapi gagal menyimpan profil. Coba login dan perbarui profil Anda.' };
   }
 }
 
@@ -215,6 +214,8 @@ async function loginUser(username, password) {
     }
     
     const user = doc.data();
+    // Ensure username is explicitly in session
+    user.username = normalizedUsername;
     saveSession(user);
 
     return { success: true, user };
@@ -302,7 +303,7 @@ function buildRegisterForm(role) {
     const nextField = fields[i + 1];
 
     // Full-width fields
-    if (field.type === 'textarea' || field.name === 'alamat') {
+    if (field.type === 'textarea' || field.type === 'multiselect' || field.name === 'alamat') {
       container.innerHTML += buildFieldHTML(field);
       i++;
     }
@@ -329,22 +330,65 @@ function buildFieldHTML(field) {
         ${field.options.map(o => `<option value="${o}">${o}</option>`).join('')}
       </select>`;
       break;
+    case 'multiselect':
+      inputHTML = `<div class="form-group" style="margin-top:8px;">
+        <div id="reg-${field.name}" style="display:flex;gap:8px;flex-wrap:wrap;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg);">
+          ${field.options.map(o => `
+            <label style="display:flex;align-items:center;gap:6px;background:#fff;padding:6px 12px;border:1px solid var(--border);border-radius:20px;cursor:pointer;">
+              <input type="checkbox" value="${o}" style="margin:0;" class="reg-${field.name}-checkbox">
+              <span style="font-size:12px;">${o}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>`;
+      break;
     case 'textarea':
-      inputHTML = `<textarea class="form-textarea" id="reg-${field.name}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}></textarea>`;
+      inputHTML = `<textarea class="form-textarea" id="reg-${field.name}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''} minlength="${field.min || 5}"></textarea>`;
       break;
     case 'password':
       inputHTML = `<div class="password-wrapper">
-        <input class="form-input" type="password" id="reg-${field.name}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}>
+        <input class="form-input" type="password" id="reg-${field.name}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''} minlength="6" maxlength="50">
         <button type="button" class="password-toggle" onclick="togglePasswordVisibility('reg-${field.name}', this)">👁️</button>
       </div>`;
       break;
-    default:
-      inputHTML = `<input class="form-input" type="${field.type}" id="reg-${field.name}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}>`;
+    default: {
+      // Per-field constraints
+      const constraints = {
+        username: { minlength: 3, maxlength: 30, pattern: '[a-zA-Z0-9_]+', title: 'Huruf, angka, dan garis bawah saja' },
+        nama:     { minlength: 3, maxlength: 80 },
+        nik:      { minlength: 16, maxlength: 16, pattern: '[0-9]{16}', inputmode: 'numeric', title: 'NIK harus 16 digit angka' },
+        nip:      { minlength: 8, maxlength: 30, pattern: '[0-9]+', inputmode: 'numeric', title: 'NIP hanya angka' },
+        no_hp:    { minlength: 10, maxlength: 15, inputmode: 'tel' },
+        instansi: { minlength: 3, maxlength: 100 },
+        jabatan:  { minlength: 3, maxlength: 80 },
+      };
+      const c = constraints[field.name] || {};
+      const attrs = Object.entries(c)
+        .filter(([k]) => !['title'].includes(k))
+        .map(([k,v]) => `${k}="${v}"`).join(' ');
+      const titleAttr = c.title ? `title="${c.title}"` : '';
+      inputHTML = `<input class="form-input" type="${field.type}" id="reg-${field.name}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''} ${attrs} ${titleAttr}>`;
+      break;
+    }
   }
 
+  // Build hint text for character requirements
+  const hints = {
+    username:  'min. 3 karakter, boleh huruf, angka, dan garis bawah (_)',
+    nama:      'min. 3 karakter',
+    password:  'min. 6 karakter',
+    password_confirm: 'harus sama dengan password di atas',
+    nik:       'tepat 16 digit angka',
+    nip:       'angka saja, min. 8 digit',
+    no_hp:     'format: 08xxxxxxxx atau +628xxxxxxxx',
+    instansi:  'min. 3 karakter',
+  };
+  const hint = hints[field.name] ? `<div class="field-hint">${hints[field.name]}</div>` : '';
+
   return `<div class="form-group">
-    <label class="form-label">${field.label}${field.required ? ' *' : ''}</label>
+    <label class="form-label">${field.label}${field.required ? ' <span style="color:var(--danger)">*</span>' : ''}</label>
     ${inputHTML}
+    ${hint}
     <div class="form-error" id="err-${field.name}"></div>
   </div>`;
 }
@@ -402,50 +446,112 @@ async function handleRegister(e) {
 
   const role = document.getElementById('auth-page').dataset.role;
   const fields = REGISTER_FIELDS[role];
+  if (!fields) {
+    showAuthError('register-error', '❌ Role tidak valid. Kembali dan pilih peran yang benar.');
+    return;
+  }
+
   const formData = {};
   let hasError = false;
+  let firstErrorEl = null;
 
-  // Collect and validate form data
+  // --- Collect and validate required fields ---
   fields.forEach(field => {
     const el = document.getElementById(`reg-${field.name}`);
     if (!el) return;
+    
+    if (field.type === 'multiselect') {
+      const checkboxes = document.querySelectorAll(`.reg-${field.name}-checkbox:checked`);
+      const selected = Array.from(checkboxes).map(cb => cb.value);
+      formData[field.name] = selected; // Array
+      
+      if (field.required && selected.length === 0) {
+        showFieldError(field.name, `${field.label} harus dipilih minimal 1!`);
+        el.style.border = '1px solid var(--danger)';
+        if (!firstErrorEl) firstErrorEl = el;
+        hasError = true;
+      } else {
+        el.style.border = '1px solid var(--border)';
+      }
+    } else {
+      const value = el.value.trim();
+      formData[field.name] = value;
 
-    const value = el.value.trim();
-    formData[field.name] = value;
-
-    if (field.required && !value) {
-      showFieldError(field.name, `${field.label} harus diisi!`);
-      el.classList.add('error');
-      hasError = true;
+      if (field.required && !value) {
+        showFieldError(field.name, `${field.label} harus diisi!`);
+        el.classList.add('error');
+        if (!firstErrorEl) firstErrorEl = el;
+        hasError = true;
+      }
     }
   });
 
-  if (hasError) return;
+  if (hasError) {
+    if (firstErrorEl) firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showAuthError('register-error', '⚠️ Lengkapi semua kolom yang wajib diisi (ditandai *).');
+    return;
+  }
 
-  // Validate NIK (16 digits)
-  if (formData.nik && formData.nik.length !== 16) {
-    showFieldError('nik', 'NIK harus 16 digit!');
+  // --- Validate username format ---
+  if (formData.username && !/^[a-z0-9_]{3,30}$/.test(formData.username.toLowerCase())) {
+    showFieldError('username', 'Username hanya boleh huruf kecil, angka, dan garis bawah. Minimal 3 karakter.');
+    document.getElementById('reg-username')?.classList.add('error');
+    showAuthError('register-error', '⚠️ Format username tidak valid.');
+    return;
+  }
+
+  // --- Validate NIK (16 digits, only for pendamping) ---
+  if (formData.nik !== undefined && formData.nik.length !== 16) {
+    showFieldError('nik', 'NIK harus tepat 16 digit angka!');
+    document.getElementById('reg-nik')?.classList.add('error');
     hasError = true;
   }
 
-  // Validate phone
-  if (formData.no_hp && !/^08\d{8,12}$/.test(formData.no_hp)) {
-    showFieldError('no_hp', 'Format No. HP tidak valid! (contoh: 08xxxxxxxxxx)');
-    hasError = true;
+  // --- Validate phone — accept multiple formats ---
+  if (formData.no_hp) {
+    const normalized = formData.no_hp.replace(/[\s\-().]/g, '');
+    if (!/^(08|\+628|628)\d{7,12}$/.test(normalized)) {
+      showFieldError('no_hp', 'Format No. HP tidak valid. Contoh: 08123456789 atau +6281234567890');
+      document.getElementById('reg-no_hp')?.classList.add('error');
+      hasError = true;
+    }
   }
 
-  if (hasError) return;
+  if (hasError) {
+    showAuthError('register-error', '⚠️ Periksa kembali isian form di atas.');
+    return;
+  }
+
+  // --- Show loading state ---
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn?.innerHTML;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '⌛ Mendaftar...';
+  }
 
   const result = await registerUser(role, formData);
+
+  // --- Restore button ---
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnText;
+  }
+
   if (result.success) {
     showToast(`✅ Akun ${ROLE_INFO[role]?.label} berhasil dibuat! Silakan login.`, 'success');
-    // Switch to login tab and prefill username
     switchAuthTab('login');
-    document.getElementById('login-username').value = formData.username;
+    document.getElementById('login-username').value = formData.username.toLowerCase();
     document.getElementById('login-password').value = '';
     document.getElementById('login-password').focus();
   } else {
-    showAuthError('register-error', result.error);
+    // Highlight specific field if error is field-related
+    if (result.field) {
+      showFieldError(result.field, result.error);
+      document.getElementById(`reg-${result.field}`)?.classList.add('error');
+      document.getElementById(`reg-${result.field}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    showAuthError('register-error', '❌ ' + result.error);
   }
 }
 

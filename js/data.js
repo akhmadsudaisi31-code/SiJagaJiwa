@@ -8,6 +8,7 @@ let PATIENTS = [];
 let DRUGS = [];
 let PICKUPS = [];
 let NOTIFS = [];
+let USERS = [];
 let CHATS = {}; // Will be used per-conversation
 let CHAT_UNSUBSCRIBE = null; // Real-time listener
 let PATIENT_DETAIL_UNSUBSCRIBE = null; // Real-time listener for pmo_logs in detail view
@@ -66,7 +67,11 @@ function startGlobalRealTimeSync() {
     { name: "users", setter: (data) => {
         // Update local session if current user info changes
         const session = getCurrentSession();
-        const myProfile = data.find(u => u.firebaseId === session?.username);
+        const myProfile = data.find(u => (u.firebaseId || u.username) === session?.username);
+        
+        // Populate global USERS array
+        USERS = data;
+
         if (myProfile && JSON.stringify(myProfile) !== JSON.stringify(session)) {
             console.log("Profile updated via real-time sync, updating session...");
             const newSession = { ...session, ...myProfile };
@@ -176,7 +181,13 @@ async function saveToStorage() {
 }
 
 // ============ APP STATE ============
-let currentRole = "dokter";
+// Initialize from session to avoid timing bug where currentRole = 'dokter' before enterApp() runs
+let currentRole = (() => {
+  try {
+    const s = localStorage.getItem('siodgj_session');
+    return s ? (JSON.parse(s).role || 'guest') : 'guest';
+  } catch { return 'guest'; }
+})();
 let currentPage = "dashboard";
 let wtStep = 0;
 let selectedContact = "dr. Moslihin";
@@ -240,6 +251,7 @@ const ROLE_NAVS = {
     { icon: "🏠", label: "Dashboard", page: "dashboard" },
     { icon: "👥", label: "Pasien", page: "data-pasien" },
     { icon: "💬", label: "Chat", page: "chat" },
+    { icon: "⚙️", label: "Profil", page: "profil" },
   ],
   pemegang: [
     { icon: "🏠", label: "Dashboard", page: "dashboard" },
@@ -260,6 +272,7 @@ const ROLE_NAVS = {
     { icon: "🚗", label: "Jadwal", page: "jadwal-ambil" },
     { icon: "🔔", label: "Notifikasi", page: "notifikasi" },
     { icon: "💬", label: "Chat", page: "chat" },
+    { icon: "🔐", label: "Manajemen Akun", page: "manajemen-akun" },
     { icon: "👤", label: "Profil", page: "profil" },
   ],
 };
@@ -327,9 +340,9 @@ const REGISTER_FIELDS = {
       required: true,
     },
     {
-      name: "desa",
-      label: "Desa / Wilayah",
-      type: "select",
+      name: "desas",
+      label: "Desa / Wilayah Tugas (pilih minimal 1)",
+      type: "multiselect",
       options: [
         "Alas Rajah", "Bates", "Blega", "Blega Oloh", "Gigir", "Kajjan", 
         "Kampao", "Karang Gayam", "Karang Nangkah", "Karang Panasan", 
@@ -390,9 +403,9 @@ const REGISTER_FIELDS = {
       required: true,
     },
     {
-      name: "desa",
-      label: "Wilayah Tugas (Desa)",
-      type: "select",
+      name: "desas",
+      label: "Wilayah Tugas (Desa) — pilih minimal 1",
+      type: "multiselect",
       options: [
         "Alas Rajah", "Bates", "Blega", "Blega Oloh", "Gigir", "Kajjan", 
         "Kampao", "Karang Gayam", "Karang Nangkah", "Karang Panasan", 

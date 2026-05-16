@@ -3,26 +3,77 @@
  * All page-specific rendering logic
  */
 
+// ============ UTILITY FUNCTIONS ============
+
+/**
+ * Normalizes a desa/village name for consistent comparison.
+ * Handles "Desa Blega" == "blega" == "BLEGA"
+ */
+function normalizeDesa(str) {
+  if (!str) return '';
+  return str.toLowerCase()
+    .replace(/^desa\s+/i, '')  // remove prefix "Desa "
+    .replace(/\s+/g, ' ')       // normalize whitespace
+    .trim();
+}
+
+/**
+ * Get the list of desas (villages) for a user session.
+ * Supports both old 'desa' (string) and new 'desas' (array) fields.
+ * No data migration needed — backward compatible.
+ */
+function getUserDesas(session) {
+  if (!session) return [];
+  if (Array.isArray(session.desas) && session.desas.length > 0) {
+    return session.desas.map(normalizeDesa).filter(Boolean);
+  }
+  const single = session.desa || session.alamat;
+  return single ? [normalizeDesa(single)] : [];
+}
+
+/**
+ * Returns audit metadata fields to attach to every Firestore write.
+ * @param {'created'|'updated'|'deleted'} action
+ */
+function getAuditFields(action = 'updated') {
+  const session = getCurrentSession();
+  const ts = new Date().toISOString();
+  return {
+    [`${action}By`]:     session?.username || 'unknown',
+    [`${action}ByName`]: session?.nama     || 'unknown',
+    [`${action}ByRole`]: session?.role     || 'unknown',
+    [`${action}At`]:     ts,
+  };
+}
+
+/**
+ * Get the patient list filtered by the current user's role & desa.
+ * Admin, pemegang, and dokter see patients based on their access level.
+ */
+function getMyPatients(session) {
+  if (!session) return [];
+  const role = session.role || currentRole;
+
+  if (role === 'admin' || role === 'pemegang') {
+    return PATIENTS; // See all
+  }
+  if (role === 'dokter') {
+    return PATIENTS.filter(p => p.assignedDoctorId === session.username);
+  }
+  // petugas & pendamping: filter by desa
+  const userDesas = getUserDesas(session);
+  if (userDesas.length === 0) return [];
+  return PATIENTS.filter(p =>
+    userDesas.includes(normalizeDesa(p.desa)) ||
+    userDesas.includes(normalizeDesa(p.alamat))
+  );
+}
+
 // ============ DASHBOARD ============
 function renderDashboardPatients() {
   const session = getCurrentSession();
   const el = document.getElementById('dashboard-patients');
-  let displayPatients = PATIENTS;
-  
-  if (currentRole === 'dokter') {
-    displayPatients = PATIENTS.filter(p => p.assignedDoctorId === session?.username);
-  } else if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
-    const userDesa = session?.desa || session?.alamat;
-    if (!userDesa) {
-      displayPatients = [];
-    } else {
-      const cleanUserDesa = userDesa.replace("Desa ", "").trim();
-      displayPatients = PATIENTS.filter(p => {
-        if (p.desa && session.desa && p.desa === session.desa) return true;
-        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
-      });
-    }
-  }
+  const displayPatients = getMyPatients(session);
   
   if (!el) return;
 
@@ -59,20 +110,15 @@ function renderDashboardPatients() {
   const jemputTotalEl = document.getElementById('stat-jemput-total');
   const jemputChangeEl = document.getElementById('stat-jemput-change');
   if (jemputTotalEl) {
+    const userDesas = getUserDesas(session);
     let displayPickups = PICKUPS;
-    if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
-      const userDesa = session?.desa || session?.alamat;
-      if (userDesa) {
-        const cleanUserDesa = userDesa.replace('Desa ', '').trim();
-        displayPickups = PICKUPS.filter(p => {
-          const patient = PATIENTS.find(pt => pt.name === p.patient);
-          if (!patient) return false;
-          if (patient.desa && session.desa && patient.desa === session.desa) return true;
-          return patient.alamat && (patient.alamat === "Desa " + cleanUserDesa || patient.alamat === cleanUserDesa);
-        });
-      } else {
-        displayPickups = [];
-      }
+    if ((currentRole === 'pendamping' || currentRole === 'petugas') && userDesas.length > 0) {
+      displayPickups = PICKUPS.filter(pickup => {
+        const patient = PATIENTS.find(pt => pt.name === pickup.patient);
+        if (!patient) return false;
+        return userDesas.includes(normalizeDesa(patient.desa)) ||
+               userDesas.includes(normalizeDesa(patient.alamat));
+      });
     }
 
     const totalPickups = displayPickups.length;
@@ -205,7 +251,10 @@ async function showPatientDetail(id) {
   
   if (editBtn) editBtn.style.display = hasFullAccess ? 'block' : 'none';
   if (deleteBtn) deleteBtn.style.display = (currentRole === 'pemegang' || currentRole === 'admin') ? 'block' : 'none';
-  if (consBtn) consBtn.style.display = (currentRole === 'pemegang' || currentRole === 'admin') ? 'block' : 'none';
+  if (consBtn) {
+    consBtn.style.display = (currentRole === 'pemegang' || currentRole === 'admin') ? 'block' : 'none';
+    consBtn.onclick = () => openConsultationModal(p.firebaseId, p.name);
+  }
 }
 
 // Global store for PMO log click detail
@@ -360,6 +409,8 @@ function togglePMO(btn, i) {
 }
 
 let dashboardChartInstance = null;
+let isRenderingChart = false;
+
 
 async function renderBarChart() {
   const ctx = document.getElementById('dashboardChart');
@@ -369,112 +420,122 @@ async function renderBarChart() {
     return; // Wait for data sync
   }
 
-  if (dashboardChartInstance) {
-    dashboardChartInstance.destroy();
-  }
+  if (isRenderingChart) return;
+  isRenderingChart = true;
 
-  // Generate last 7 days labels
-  const days = [];
-  const barData = [0, 0, 0, 0, 0, 0, 0];
-  const lineData = [0, 0, 0, 0, 0, 0, 0];
-  
-  const today = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    days.push(d.toLocaleDateString('id-ID', { weekday: 'short' }));
-    
-    // Count total patients generated until this day
-    lineData[6 - i] = PATIENTS.filter(p => !p.createdAt || new Date(p.createdAt) <= d).length || PATIENTS.length;
-    
-    // Count Pickups (Jadwal) on this day
-    const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
-    const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
-    
-    const dayPickups = PICKUPS.filter(p => {
-       const pDate = new Date(p.date || p.createdAt);
-       return pDate >= dayStart && pDate <= dayEnd;
-    }).length;
-    
-    barData[6 - i] += dayPickups;
-  }
 
-  // Fetch PMO Logs for the last 7 days across all patients
-  const patientsWithId = PATIENTS.filter(p => p.firebaseId);
   try {
-    const pmoResults = await Promise.all(
-      patientsWithId.map(p => db.collection('patients').doc(p.firebaseId).collection('pmo_logs').get())
-    );
+    if (dashboardChartInstance) {
+      dashboardChartInstance.destroy();
+    }
+
+    // Generate last 7 days labels
+    const days = [];
+    const barData = [0, 0, 0, 0, 0, 0, 0];
+    const lineData = [0, 0, 0, 0, 0, 0, 0];
     
-    pmoResults.forEach(snap => {
-      snap.forEach(doc => {
-        const log = doc.data();
-        if (!log.timestamp) return;
-        const logDate = new Date(log.timestamp);
-        
-        // Find which day bucket it belongs to
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(today);
-          d.setDate(d.getDate() - (6 - i));
-          if (logDate.getDate() === d.getDate() && logDate.getMonth() === d.getMonth() && logDate.getFullYear() === d.getFullYear()) {
-             barData[i]++;
-             break;
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      days.push(d.toLocaleDateString('id-ID', { weekday: 'short' }));
+      
+      // Count total patients generated until this day
+      lineData[6 - i] = PATIENTS.filter(p => !p.createdAt || new Date(p.createdAt) <= d).length || PATIENTS.length;
+      
+      // Count Pickups (Jadwal) on this day
+      const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+      const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+      
+      const dayPickups = PICKUPS.filter(p => {
+         const pDate = new Date(p.date || p.createdAt);
+         return pDate >= dayStart && pDate <= dayEnd;
+      }).length;
+      
+      barData[6 - i] += dayPickups;
+    }
+
+    // Fetch PMO Logs for the last 7 days across all patients
+    const patientsWithId = PATIENTS.filter(p => p.firebaseId);
+    try {
+      const pmoResults = await Promise.all(
+        patientsWithId.map(p => db.collection('patients').doc(p.firebaseId).collection('pmo_logs').get())
+      );
+      
+      pmoResults.forEach(snap => {
+        snap.forEach(doc => {
+          const log = doc.data();
+          if (!log.timestamp) return;
+          const logDate = new Date(log.timestamp);
+          
+          // Find which day bucket it belongs to
+          for (let i = 0; i < 7; i++) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - (6 - i));
+            if (logDate.getDate() === d.getDate() && logDate.getMonth() === d.getMonth() && logDate.getFullYear() === d.getFullYear()) {
+               barData[i]++;
+               break;
+            }
+          }
+        });
+      });
+    } catch (e) {
+      console.warn("Failed to fetch PMO logs for chart", e);
+    }
+
+    dashboardChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: days,
+        datasets: [
+          {
+            label: 'Total Pasien',
+            type: 'line',
+            data: lineData,
+            borderColor: 'rgba(255, 159, 64, 1)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.4,
+            yAxisID: 'y1'
+          },
+          {
+            label: 'Kunjungan (PMO & Jadwal)',
+            data: barData,
+            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+            borderRadius: 6,
+            yAxisID: 'y'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            position: 'left',
+            grid: { display: false },
+            title: { display: true, text: 'Kunjungan', font: { size: 10 } },
+            ticks: { stepSize: 1 }
+          },
+          y1: {
+            beginAtZero: true,
+            position: 'right',
+            grid: { display: false },
+            title: { display: true, text: 'Total', font: { size: 10 } },
+            ticks: { stepSize: 1 }
           }
         }
-      });
-    });
-  } catch (e) {
-    console.warn("Failed to fetch PMO logs for chart", e);
-  }
-
-  dashboardChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: days,
-      datasets: [
-        {
-          label: 'Total Pasien',
-          type: 'line',
-          data: lineData,
-          borderColor: 'rgba(255, 159, 64, 1)',
-          borderWidth: 2,
-          fill: false,
-          tension: 0.4,
-          yAxisID: 'y1'
-        },
-        {
-          label: 'Kunjungan (PMO & Jadwal)',
-          data: barData,
-          backgroundColor: 'rgba(54, 162, 235, 0.6)',
-          borderRadius: 6,
-          yAxisID: 'y'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          position: 'left',
-          grid: { display: false },
-          title: { display: true, text: 'Kunjungan', font: { size: 10 } },
-          ticks: { stepSize: 1 }
-        },
-        y1: {
-          beginAtZero: true,
-          position: 'right',
-          grid: { display: false },
-          title: { display: true, text: 'Total', font: { size: 10 } },
-          ticks: { stepSize: 1 }
-        }
       }
-    }
-  });
+    });
+  } catch (err) {
+    console.error("renderBarChart error:", err);
+  } finally {
+    isRenderingChart = false;
+  }
 }
 
 function renderStockAlerts() {
@@ -507,22 +568,7 @@ async function renderFullPatients() {
   const pmoObatList = document.getElementById('pmo-obat-list');
   const jadwalSel = document.getElementById('jadwal-pasien-select');
   
-  let displayPatients = PATIENTS;
-  
-  if (currentRole === 'dokter') {
-    displayPatients = PATIENTS.filter(p => p.assignedDoctorId === session?.username);
-  } else if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
-    const userDesa = session?.desa || session?.alamat;
-    if (!userDesa) {
-      displayPatients = [];
-    } else {
-      const cleanUserDesa = userDesa.replace("Desa ", "").trim();
-      displayPatients = PATIENTS.filter(p => {
-        if (p.desa && session.desa && p.desa === session.desa) return true;
-        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
-      });
-    }
-  }
+  const displayPatients = getMyPatients(session);
   
   if (el) el.innerHTML = displayPatients.map(p => patientHTML(p)).join('');
   
@@ -578,12 +624,29 @@ async function renderFullPatients() {
   }
 }
 
+// ============ SEARCH / FILTER ============
 function filterPatients(q) {
+  const session = getCurrentSession();
   const el = document.getElementById('full-patient-list');
-  const filtered = PATIENTS.filter(p =>
-    p.name.toLowerCase().includes(q.toLowerCase()) || p.diagnosis.toLowerCase().includes(q.toLowerCase())
+  // Admin & pemegang search all patients; others search their pool
+  const pool = getMyPatients(session);
+
+  if (!q || !q.trim()) {
+    if (el) el.innerHTML = pool.map(p => patientHTML(p)).join('');
+    return;
+  }
+
+  const qLow = q.toLowerCase().trim();
+  const filtered = pool.filter(p =>
+    p.name?.toLowerCase().includes(qLow) ||
+    p.diagnosis?.toLowerCase().includes(qLow) ||
+    p.alamat?.toLowerCase().includes(qLow) ||
+    p.desa?.toLowerCase().includes(qLow) ||
+    p.nik?.includes(q) ||
+    p.pendamping?.toLowerCase().includes(qLow)
   );
-  el.innerHTML = filtered.length
+
+  if (el) el.innerHTML = filtered.length
     ? filtered.map(p => patientHTML(p)).join('')
     : '<div style="text-align:center;padding:32px;color:var(--text-muted);">Pasien tidak ditemukan</div>';
 }
@@ -593,22 +656,9 @@ function renderPMOFull() {
   const session = getCurrentSession();
   const el = document.getElementById('pmo-full-list');
   const el2 = document.getElementById('pmo-compliance');
-  let displayPatients = PATIENTS;
-  
-  if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
-    const userDesa = session?.desa || session?.alamat;
-    if (!userDesa) {
-      displayPatients = [];
-    } else {
-      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
-      displayPatients = PATIENTS.filter(p => {
-        if (p.desa && session.desa && p.desa === session.desa) return true;
-        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
-      });
-    }
-  }
+  const displayPatients = getMyPatients(session);
 
-  // Broadened Visibility (as requested): Show ALL patients in Monitor PMO
+  // Broadened Visibility: Show ALL patients in Monitor PMO for pemegang/admin
 
   el.innerHTML = displayPatients.map((p, i) => `
     <div style="padding:16px 0;border-bottom:1px solid var(--border);">
@@ -1470,21 +1520,27 @@ async function renderLaporan() {
   if (!pageLaporan || pageLaporan.classList.contains('hidden')) return;
 
   const session = getCurrentSession();
-  let displayPatients = PATIENTS;
-  
-  if (currentRole === 'dokter') {
-    displayPatients = PATIENTS.filter(p => p.assignedDoctorId === session?.username);
-  } else if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
-    const userDesa = session?.desa || session?.alamat;
-    if (userDesa) {
-      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
-      displayPatients = PATIENTS.filter(p => {
-        if (p.desa && session.desa && p.desa === session.desa) return true;
-        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
-      });
-    } else {
-      displayPatients = [];
-    }
+
+  // Start from role-filtered pool
+  let displayPatients = getMyPatients(session);
+
+  // Apply additional desa filter from dropdown (admin/pemegang can filter by desa)
+  const desaFilterEl = document.getElementById('laporan-filter-desa');
+  const selectedDesa = desaFilterEl ? desaFilterEl.value.trim() : '';
+  if (selectedDesa) {
+    const cleanSelected = normalizeDesa(selectedDesa);
+    displayPatients = displayPatients.filter(p =>
+      normalizeDesa(p.desa) === cleanSelected ||
+      normalizeDesa(p.alamat) === cleanSelected
+    );
+  }
+
+  // Update filter info label
+  const filterInfo = document.getElementById('laporan-filter-info');
+  if (filterInfo) {
+    filterInfo.textContent = selectedDesa
+      ? `${displayPatients.length} pasien di ${selectedDesa}`
+      : `${displayPatients.length} pasien total`;
   }
 
   const totalPasien = displayPatients.length;
@@ -1548,21 +1604,17 @@ async function renderLaporan() {
 
 function downloadReportExcel() {
   const session = getCurrentSession();
-  let displayPatients = PATIENTS;
-
-  if (currentRole === 'dokter') {
-    displayPatients = PATIENTS.filter(p => p.assignedDoctorId === session?.username);
-  } else if (currentRole === 'pendamping' || (currentRole === 'petugas' && session?.desa)) {
-    const userDesa = session?.desa || session?.alamat;
-    if (userDesa) {
-      const cleanUserDesa = userDesa.replace('Desa ', '').trim();
-      displayPatients = PATIENTS.filter(p => {
-        if (p.desa && session.desa && p.desa === session.desa) return true;
-        return p.alamat && (p.alamat === "Desa " + cleanUserDesa || p.alamat === cleanUserDesa);
-      });
-    } else {
-      displayPatients = [];
-    }
+  
+  // Apply the same filters as the UI
+  let displayPatients = getMyPatients(session);
+  const desaFilterEl = document.getElementById('laporan-filter-desa');
+  const selectedDesa = desaFilterEl ? desaFilterEl.value.trim() : '';
+  if (selectedDesa) {
+    const cleanSelected = normalizeDesa(selectedDesa);
+    displayPatients = displayPatients.filter(p =>
+      normalizeDesa(p.desa) === cleanSelected ||
+      normalizeDesa(p.alamat) === cleanSelected
+    );
   }
 
   if (displayPatients.length === 0) {
@@ -1621,6 +1673,150 @@ function downloadReportExcel() {
   URL.revokeObjectURL(url);
 
   showToast('✅ Laporan berhasil diekspor ke Excel!', 'success');
+}
+
+async function downloadReportPDF() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showToast('❌ Gagal memuat library PDF, periksa koneksi internet', 'error');
+    return;
+  }
+  
+  const session = getCurrentSession();
+  let displayPatients = getMyPatients(session);
+  
+  const desaFilterEl = document.getElementById('laporan-filter-desa');
+  const selectedDesa = desaFilterEl ? desaFilterEl.value.trim() : '';
+  if (selectedDesa) {
+    const cleanSelected = normalizeDesa(selectedDesa);
+    displayPatients = displayPatients.filter(p =>
+      normalizeDesa(p.desa) === cleanSelected ||
+      normalizeDesa(p.alamat) === cleanSelected
+    );
+  }
+
+  if (displayPatients.length === 0) {
+    showToast('❌ Tidak ada data untuk diekspor', 'error');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const today = new Date().toLocaleDateString('id-ID');
+  
+  // Header
+  doc.setFontSize(18);
+  doc.setTextColor(15, 76, 129); // var(--navy)
+  doc.text('Laporan Sistem SiJaga Jiwa', 105, 20, { align: 'center' });
+  
+  doc.setFontSize(11);
+  doc.setTextColor(80, 80, 80);
+  const wilayahStr = selectedDesa ? selectedDesa : 'Semua Wilayah';
+  doc.text(`Wilayah: ${wilayahStr} | Tanggal: ${today}`, 105, 28, { align: 'center' });
+  
+  // Summary Data
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  const totalPasien = displayPatients.length;
+  const compliantCount = displayPatients.filter(p => (p.pmo || 0) >= 80).length;
+  const avgPmo = totalPasien > 0 ? Math.round(displayPatients.reduce((sum, p) => sum + (p.pmo || 0), 0) / totalPasien) : 0;
+  
+  doc.text(`Total Pasien: ${totalPasien}`, 14, 40);
+  doc.text(`Pasien Patuh (≥80%): ${compliantCount}`, 14, 46);
+  doc.text(`Rata-rata Kepatuhan: ${avgPmo}%`, 14, 52);
+  doc.text(`Dicetak Oleh: ${session.nama} (${session.role})`, 14, 58);
+
+  // Table
+  doc.autoTable({
+    startY: 65,
+    head: [['No', 'Nama', 'Usia', 'Diagnosis', 'Status', 'Kepatuhan', 'Desa/Alamat']],
+    body: displayPatients.map((p, i) => [
+      i + 1,
+      p.name || '-',
+      p.age || '-',
+      p.diagnosis || '-',
+      p.status || '-',
+      `${p.pmo || 0}%`,
+      p.desa || p.alamat || '-'
+    ]),
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [15, 76, 129] }
+  });
+  
+  doc.save(`laporan-sijagajiwa-${today.replace(/\//g, '-')}.pdf`);
+  showToast('✅ Laporan PDF berhasil diunduh!', 'success');
+}
+
+async function renderLaporanPetugas() {
+  const el = document.getElementById('laporan-petugas-body');
+  if (!el) return;
+
+  el.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">⌛ Memuat data aktivitas petugas...</td></tr>';
+
+  try {
+    const petugasList = USERS.filter(u => u.role === 'petugas');
+    if (petugasList.length === 0) {
+      el.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">Tidak ada akun petugas yang terdaftar</td></tr>';
+      return;
+    }
+
+    const results = await Promise.all(petugasList.map(async petugas => {
+      const desaList = getUserDesas(petugas);
+      
+      // Hitung pasien yang menjadi tanggung jawab petugas ini
+      const myPatients = PATIENTS.filter(p => 
+        desaList.includes(normalizeDesa(p.desa)) || 
+        desaList.includes(normalizeDesa(p.alamat))
+      );
+      
+      let totalPmo = 0;
+      let lastActive = null;
+      
+      // Ambil log PMO dari pasien-pasien petugas tersebut (limit 10 pasien teratas untuk optimasi)
+      const checkPatients = myPatients.slice(0, 10);
+      for (const p of checkPatients) {
+        if (!p.firebaseId) continue;
+        const logs = await db.collection('patients').doc(p.firebaseId)
+          .collection('pmo_logs')
+          .where('recordedBy', '==', petugas.nama)
+          .orderBy('timestamp', 'desc')
+          .limit(5)
+          .get()
+          .catch(() => ({ empty: true, size: 0 }));
+          
+        totalPmo += logs.size;
+        if (!logs.empty) {
+          const ts = logs.docs[0].data().timestamp;
+          if (!lastActive || ts > lastActive) lastActive = ts;
+        }
+      }
+      
+      return { petugas, desaList, myPatientsCount: myPatients.length, totalPmo, lastActive };
+    }));
+    
+    // Sort berdasarkan aktivitas terakhir (paling baru di atas)
+    results.sort((a, b) => {
+      if (!a.lastActive) return 1;
+      if (!b.lastActive) return -1;
+      return new Date(b.lastActive) - new Date(a.lastActive);
+    });
+
+    el.innerHTML = results.map(r => `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px;">${r.petugas.nama}</td>
+        <td style="padding:10px;">
+          ${r.desaList.length > 0 ? r.desaList.map(d => `<span style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;font-size:11px;">${d}</span>`).join(' ') : '-'}
+        </td>
+        <td style="padding:10px;text-align:center;font-weight:600;">${r.myPatientsCount}</td>
+        <td style="padding:10px;text-align:center;color:var(--primary);font-weight:600;">${r.totalPmo}</td>
+        <td style="padding:10px;text-align:center;font-size:11px;color:var(--text-muted);">
+          ${r.lastActive ? new Date(r.lastActive).toLocaleString('id-ID', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Belum pernah'}
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to render petugas report:', e);
+    el.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--danger);">❌ Gagal memuat data aktivitas</td></tr>';
+  }
 }
 
 /**
@@ -1918,6 +2114,48 @@ function renderProfil() {
     }
   }
 
+  // Dynamic Instansi & Jabatan
+  const instansiRow = document.getElementById('profil-row-3');
+  const instansiEl = document.getElementById('profil-instansi');
+  const jabatanEl = document.getElementById('profil-jabatan');
+  if (instansiRow) {
+    if (currentRole === 'dokter' || currentRole === 'pemegang' || currentRole === 'petugas' || currentRole === 'admin') {
+      instansiRow.style.display = 'flex';
+      if (instansiEl) instansiEl.value = session?.instansi || '';
+      if (jabatanEl) jabatanEl.value = session?.jabatan || '';
+    } else {
+      instansiRow.style.display = 'none';
+    }
+  }
+
+  // Dynamic Desa Multi-Select
+  const desaContainer = document.getElementById('profil-desa-container');
+  const desaMulti = document.getElementById('profil-desa-multiselect');
+  if (desaContainer && desaMulti) {
+    if (currentRole === 'petugas' || currentRole === 'pendamping') {
+      desaContainer.style.display = 'block';
+      const allDesas = [
+        "Alas Rajah", "Bates", "Blega", "Blega Oloh", "Gigir", "Kajjan", "Kampao",
+        "Karang Gayam", "Karang Nangkah", "Karang Panasan", "Karpote", "Ko'olan",
+        "Lomaer", "Lombang Dajah", "Lombang Laok", "Nyor Manes", "Pangeran Gedungan",
+        "Panjalinan", "Rosep"
+      ];
+      const userDesas = getUserDesas(session);
+      
+      desaMulti.innerHTML = allDesas.map(d => {
+        const isChecked = userDesas.includes(normalizeDesa(d));
+        return `
+          <label style="display:flex;align-items:center;gap:6px;background:#fff;padding:6px 12px;border:1px solid var(--border);border-radius:20px;cursor:pointer;">
+            <input type="checkbox" value="${d}" ${isChecked ? 'checked' : ''} style="margin:0;" class="profil-desa-checkbox">
+            <span style="font-size:12px;font-weight:${isChecked ? '600' : '400'};">${d}</span>
+          </label>
+        `;
+      }).join('');
+    } else {
+      desaContainer.style.display = 'none';
+    }
+  }
+
   document.getElementById('notif-settings').innerHTML = [
     ['Pengingat PMO', true],
     ['Alert Stok Obat', true],
@@ -1976,6 +2214,22 @@ async function simpanProfil() {
   } else {
     updates.nip = idVal;
   }
+  
+  if (currentRole === 'dokter' || currentRole === 'pemegang' || currentRole === 'petugas' || currentRole === 'admin') {
+    updates.instansi = document.getElementById('profil-instansi')?.value || '';
+    updates.jabatan = document.getElementById('profil-jabatan')?.value || '';
+  }
+  
+  if (currentRole === 'petugas' || currentRole === 'pendamping') {
+    const checkboxes = document.querySelectorAll('.profil-desa-checkbox:checked');
+    const selectedDesas = Array.from(checkboxes).map(cb => cb.value);
+    updates.desas = selectedDesas;
+    // Update legacy field for backward compatibility
+    if (selectedDesas.length > 0) {
+      if (currentRole === 'petugas') updates.desa = selectedDesas[0];
+      if (currentRole === 'pendamping') updates.alamat = selectedDesas[0];
+    }
+  }
 
   try {
     showToast('⏳ Menyimpan data...', '');
@@ -1994,6 +2248,83 @@ async function simpanProfil() {
     console.error("Failed to update profile", err);
     showToast('❌ Gagal menyimpan perubahan', 'error');
   }
+}
+
+async function updateProfilePhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  
+  if (!file.type.startsWith('image/')) {
+    showToast('❌ File harus berupa gambar', 'error');
+    return;
+  }
+  
+  showToast('⏳ Memproses gambar...', '');
+
+  try {
+    // Compress image
+    const compressed = await compressImageBase64(file, 150, 0.7);
+    
+    // Size check (max ~100KB)
+    if (compressed.length > 150000) {
+      showToast('❌ Gambar terlalu besar. Pilih gambar lain.', 'error');
+      return;
+    }
+    
+    // Preview immediately
+    const avatarEl = document.getElementById('profil-avatar-big');
+    if (avatarEl) {
+      avatarEl.innerHTML = `<img src="${compressed}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    }
+    
+    // Save to Firestore
+    const session = getCurrentSession();
+    if (!session || !session.username) throw new Error('No session');
+    
+    await db.collection('users').doc(session.username).update({ photo: compressed });
+    
+    // Update session
+    session.photo = compressed;
+    localStorage.setItem('siodgj_session', JSON.stringify(session));
+    if (typeof syncUserUI === 'function') syncUserUI();
+    
+    showToast('✅ Foto profil berhasil diperbarui!', 'success');
+  } catch (err) {
+    console.error("Failed to update photo", err);
+    showToast('❌ Gagal memperbarui foto', 'error');
+  }
+}
+
+/**
+ * Helper: Compress image to base64
+ */
+function compressImageBase64(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = event => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = error => reject(error);
+    };
+    reader.onerror = error => reject(error);
+  });
 }
 
 // ============ FORM HANDLERS ============
@@ -2040,7 +2371,8 @@ async function tambahPasien() {
     nik: nik,
     alamat: alamat || '-',
     desa: desa || '-',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    ...getAuditFields('created'),
   };
 
   try {
@@ -2333,44 +2665,6 @@ async function viewPmoDetails(pasienName) {
   }
 }
 
-// ============ PROFILE UPDATES ============
-async function updateProfilePhoto(input) {
-  if (!input.files || !input.files[0]) return;
-  
-  const file = input.files[0];
-  try {
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
-    const session = getCurrentSession();
-    const userId = session?.username || session?.uid;
-    if (!session || !userId) {
-      showToast('❌ Gagal: Sesi tidak valid', 'error');
-      return;
-    }
-
-    // Update in Firestore
-    await db.collection('users').doc(userId).update({ photo: base64 });
-    
-    // Update local session
-    session.photo = base64;
-    localStorage.setItem('siodgj_session', JSON.stringify(session));
-    
-    // Refresh UI
-    renderProfil();
-    document.getElementById('user-avatar').innerHTML = `<img src="${base64}" style="width:28px;height:28px;object-fit:cover;border-radius:50%;">`;
-    
-    showToast('✅ Foto profil berhasil diperbarui!', 'success');
-  } catch (err) {
-    console.error("Failed to update profile photo", err);
-    showToast('❌ Gagal memperbarui foto', 'error');
-  }
-}
-
 // ============ PATIENT EDIT ============
 function openEditPatient() {
   if (currentRole !== 'pemegang' && currentRole !== 'petugas' && currentRole !== 'admin') {
@@ -2463,7 +2757,8 @@ async function simpanStok() {
       min: min,
       kadaluarsa: exp,
       pemasok: vendor,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      ...getAuditFields('updated'),
     };
 
     if (editingStokFirebaseId) {
@@ -2546,8 +2841,13 @@ async function openConsultationModal(patientId, patientName) {
 }
 
 async function simpanKonsultasi() {
-  const doctorId = document.getElementById('cons-doctor-select').value;
+  const doctorId = (document.getElementById('cons-doctor-select').value || '').toLowerCase();
   const note = document.getElementById('cons-note').value;
+  
+  if (!activeConsultationPatientId) {
+    showToast('❌ Gagal: Data pasien tidak valid', 'error');
+    return;
+  }
   
   if (!doctorId) {
     showToast('❌ Pilih dokter terlebih dahulu!', 'error');
@@ -2579,16 +2879,289 @@ async function simpanKonsultasi() {
     });
 
     showToast('✅ Pasien berhasil dikirim ke Dokter!', 'success');
+    console.log(`[Consultation] Saved for patient ${activeConsultationPatientId} to doctor: ${doctorId}`);
     closeModal('modal-consultation');
+    activeConsultationPatientId = null; // Clear after success
     
     // Refresh list data
-    if (typeof loadDataFromFirestore === 'function') {
-      await loadDataFromFirestore();
-      renderFullPatients();
-    }
+    renderFullPatients();
   } catch (e) {
     console.error("Failed to save consultation:", e);
     showToast('❌ Gagal mengirim pasien', 'error');
+  }
+}
+
+// ============ MANAJEMEN AKUN (ADMIN) ============
+const ROLE_COLORS = {
+  admin:      { color: '#7c3aed', bg: '#f5f3ff', icon: '👑' },
+  dokter:     { color: '#0891b2', bg: '#ecfeff', icon: '👨‍⚕️' },
+  pemegang:   { color: '#059669', bg: '#ecfdf5', icon: '📊' },
+  petugas:    { color: '#d97706', bg: '#fffbeb', icon: '🏥' },
+  pendamping: { color: '#db2777', bg: '#fdf2f8', icon: '👨‍👩‍👧' },
+};
+
+let _akunFilterRole = 'all';
+let _akunSearch = '';
+
+function setAkunFilter(role, btn) {
+  _akunFilterRole = role;
+  document.querySelectorAll('.akun-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  filterAkun();
+}
+
+function filterAkun() {
+  const search = (document.getElementById('akun-search')?.value || '').toLowerCase();
+  _akunSearch = search;
+  _renderAkunCards();
+}
+
+function renderManajemenAkun() {
+  try {
+    // Render stats row
+    const statsEl = document.getElementById('akun-stats-row');
+    if (statsEl && USERS.length > 0) {
+      const roleCounts = {};
+      USERS.forEach(u => { roleCounts[u.role] = (roleCounts[u.role] || 0) + 1; });
+      const statsItems = [
+        { label: 'Total Akun', num: USERS.length, color: '#0f4c81' },
+        { label: 'Dokter', num: roleCounts.dokter || 0, color: '#0891b2' },
+        { label: 'Petugas', num: roleCounts.petugas || 0, color: '#d97706' },
+        { label: 'Pemegang', num: roleCounts.pemegang || 0, color: '#059669' },
+        { label: 'Pendamping', num: roleCounts.pendamping || 0, color: '#db2777' },
+        { label: 'Admin', num: roleCounts.admin || 0, color: '#7c3aed' },
+      ];
+      statsEl.innerHTML = statsItems.map(s => `
+        <div class="akun-stat-mini" onclick="setAkunFilter('${s.label === 'Total Akun' ? 'all' : s.label.toLowerCase()}', null)">
+          <div class="stat-num" style="color:${s.color};">${s.num}</div>
+          <div class="stat-lbl">${s.label}</div>
+        </div>
+      `).join('');
+    }
+
+    _renderAkunCards();
+  } catch (err) {
+    console.error('[renderManajemenAkun] Error:', err);
+  }
+}
+
+function _renderAkunCards() {
+  const el = document.getElementById('user-list-body');
+  if (!el) return;
+
+  if (!SYNC_STATUS.isReady && USERS.length === 0) {
+    el.innerHTML = `<div style="grid-column:1/-1;padding:60px 20px;text-align:center;color:var(--text-muted);">
+      <div style="font-size:32px;margin-bottom:12px;">⌛</div>
+      <div style="font-size:14px;font-weight:600;">Sinkronisasi data akun...</div>
+    </div>`;
+    return;
+  }
+
+  let filtered = USERS;
+  if (_akunFilterRole && _akunFilterRole !== 'all') {
+    filtered = filtered.filter(u => u.role === _akunFilterRole);
+  }
+  if (_akunSearch) {
+    filtered = filtered.filter(u =>
+      (u.nama || '').toLowerCase().includes(_akunSearch) ||
+      (u.username || u.firebaseId || '').toLowerCase().includes(_akunSearch)
+    );
+  }
+
+  const countEl = document.getElementById('akun-result-count');
+  if (countEl) countEl.textContent = filtered.length;
+
+  if (filtered.length === 0) {
+    el.innerHTML = `<div style="grid-column:1/-1;padding:60px 20px;text-align:center;color:var(--text-muted);">
+      <div style="font-size:40px;margin-bottom:12px;">🔍</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px;">Tidak ada akun ditemukan</div>
+      <div style="font-size:13px;">Coba ubah filter atau kata kunci pencarian</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(u => {
+    const roleStyle = ROLE_COLORS[u.role] || { color: '#0f4c81', bg: '#f0f7ff', icon: '👤' };
+    const roleName = (ROLE_INFO && u.role && ROLE_INFO[u.role]) ? ROLE_INFO[u.role].label : (u.role || 'User');
+    const userId = u.username || u.firebaseId || 'unknown';
+    const safeId = userId.replace(/'/g, "\\'");
+    const info = u.instansi || u.desa || u.alamat || null;
+
+    return `
+      <div class="user-card" style="--uc-color:${roleStyle.color};">
+        <div class="user-card-top">
+          <div class="user-card-avatar" style="background:${roleStyle.bg}; border-color:${roleStyle.color};">
+            ${roleStyle.icon}
+          </div>
+          <div class="user-card-info">
+            <div class="user-card-name">${u.nama || 'Tanpa Nama'}</div>
+            <div class="user-card-username">@${userId}</div>
+          </div>
+        </div>
+        <div>
+          <span class="user-role-badge" style="background:${roleStyle.color};">
+            ${roleStyle.icon} ${roleName}
+          </span>
+        </div>
+        <div class="user-card-meta">
+          ${info
+            ? `<span style="font-size:15px;">🏢</span><span>${info}</span>`
+            : `<span style="opacity:0.5;">— Tidak ada info instansi —</span>`}
+        </div>
+        <div class="user-card-actions">
+          <button class="btn-edit-user" onclick="openModalAkun('${safeId}')">✏️ Edit Akun</button>
+          <button class="btn-hapus-user" onclick="hapusAkun('${safeId}')" title="Hapus Akun">🗑️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+
+let editingUsername = null;
+
+function openModalAkun(username = null) {
+  editingUsername = username;
+  const titleEl = document.querySelector('#modal-akun .modal-title');
+  const user = username ? USERS.find(u => (u.username || u.firebaseId) === username) : null;
+
+  if (user) {
+    titleEl.textContent = 'Edit Akun: ' + user.nama;
+    document.getElementById('akun-nama').value = user.nama || '';
+    document.getElementById('akun-username').value = user.username || '';
+    document.getElementById('akun-username').disabled = true; // Cannot change username/docID
+    document.getElementById('akun-password').value = ''; // Don't show old password
+    document.getElementById('akun-password').placeholder = '(Tetap sama jika kosong)';
+    document.getElementById('akun-role').value = user.role || 'petugas';
+    document.getElementById('akun-instansi').value = user.instansi || user.desa || '';
+  } else {
+    titleEl.textContent = 'Tambah Akun Baru';
+    document.getElementById('akun-nama').value = '';
+    document.getElementById('akun-username').value = '';
+    document.getElementById('akun-username').disabled = false;
+    document.getElementById('akun-password').value = '';
+    document.getElementById('akun-password').placeholder = '******';
+    document.getElementById('akun-role').value = 'petugas';
+    document.getElementById('akun-instansi').value = '';
+  }
+
+  openModal('modal-akun');
+}
+
+async function simpanAkun() {
+  const nama = document.getElementById('akun-nama').value.trim();
+  const username = document.getElementById('akun-username').value.trim().toLowerCase();
+  const password = document.getElementById('akun-password').value;
+  const role = document.getElementById('akun-role').value;
+  const instansi = document.getElementById('akun-instansi').value.trim();
+
+  if (!nama || !username) {
+    showToast('❌ Nama dan Username wajib diisi!', 'error');
+    return;
+  }
+  if (!editingUsername && !password) {
+    showToast('❌ Password wajib diisi untuk akun baru!', 'error');
+    return;
+  }
+  if (!editingUsername && password.length < 6) {
+    showToast('❌ Password minimal 6 karakter!', 'error');
+    return;
+  }
+
+  // Build the Firestore profile data
+  const userData = {
+    nama,
+    username,
+    role,
+    lastUpdate: new Date().toISOString()
+  };
+  if (instansi) {
+    userData.instansi = instansi;
+    if (role === 'petugas') userData.desa = instansi;
+  }
+
+  try {
+    showToast('⏳ Menyimpan data akun...', 'info');
+
+    if (!editingUsername) {
+      // ── CREATE NEW ACCOUNT ──────────────────────────────────────────────
+      // 1. Check if username already exists in Firestore
+      const existingDoc = await db.collection('users').doc(username).get();
+      if (existingDoc.exists) {
+        showToast('❌ Username sudah digunakan! Pilih username lain.', 'error');
+        return;
+      }
+
+      // 2. Use a SECONDARY Firebase App so the admin's session is never interrupted.
+      //    createUserWithEmailAndPassword normally auto-signs-in as the new user;
+      //    using a separate app instance isolates that side effect completely.
+      const dummyEmail = username + '@sijiwa-login.com';
+      let firebaseUid = null;
+      let secondaryApp = null;
+
+      try {
+        // Create a one-time secondary app instance with a unique name
+        const secondaryAppName = 'admin-create-' + Date.now();
+        secondaryApp = firebase.initializeApp(firebaseConfig, secondaryAppName);
+        const secondaryAuth = firebase.auth(secondaryApp);
+
+        const credential = await secondaryAuth.createUserWithEmailAndPassword(dummyEmail, password);
+        firebaseUid = credential.user.uid;
+
+      } catch (authErr) {
+        if (authErr.code === 'auth/email-already-in-use') {
+          // Auth entry exists without a Firestore profile — just repair the profile below
+          console.warn('Auth user already exists, repairing Firestore profile...');
+        } else {
+          throw authErr; // Re-throw for outer catch
+        }
+      } finally {
+        // Always clean up the secondary app regardless of outcome
+        if (secondaryApp) {
+          try { await secondaryApp.delete(); } catch (_) {}
+        }
+      }
+
+      // 3. Write the Firestore profile (admin's main session is still intact)
+      if (firebaseUid) userData.uid = firebaseUid;
+      userData.id = Date.now();
+      await db.collection('users').doc(username).set(userData);
+
+      showToast(`✅ Akun @${username} berhasil dibuat! Pengguna kini bisa login.`, 'success');
+      closeModal('modal-akun');
+
+    } else {
+      // ── EDIT EXISTING ACCOUNT ──────────────────────────────────────────
+      // Only update the Firestore profile (name, role, instansi).
+      // Password changes are NOT possible via Client SDK for other users.
+      await db.collection('users').doc(username).set(userData, { merge: true });
+      showToast(`✅ Profil akun @${username} berhasil diperbarui!`, 'success');
+      closeModal('modal-akun');
+    }
+
+  } catch (e) {
+    console.error('Failed to save account:', e);
+    if (e.code === 'auth/email-already-in-use') {
+      showToast('❌ Username sudah terdaftar di sistem autentikasi!', 'error');
+    } else if (e.code === 'auth/weak-password') {
+      showToast('❌ Password terlalu lemah! Minimal 6 karakter.', 'error');
+    } else {
+      showToast('❌ Gagal menyimpan akun: ' + e.message, 'error');
+    }
+  }
+}
+
+async function hapusAkun(username) {
+  if (!username) return;
+  if (!confirm(`Apakah Anda yakin ingin menghapus akun @${username}?\nData profil akan dihapus permanen.`)) return;
+
+  try {
+    showToast('⏳ Menghapus akun...', 'info');
+    await db.collection('users').doc(username).delete();
+    showToast('✅ Akun berhasil dihapus!', 'success');
+  } catch (e) {
+    console.error("Failed to delete account:", e);
+    showToast('❌ Gagal menghapus akun', 'error');
   }
 }
 

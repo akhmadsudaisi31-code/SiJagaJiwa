@@ -324,7 +324,7 @@
           <!-- Action buttons in a neat row below patient info -->
           <div style="display:flex; gap:8px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
             <button class="btn btn-ghost" id="btn-edit-pasien" style="color:#fff;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);font-size:12px;padding:8px 16px;display:none;" onclick="openEditPatient()">✏️ Edit Data</button>
-            <button class="btn" id="btn-konsultasi-pasien" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:12px;padding:8px 16px;display:none;" onclick="openConsultationModal()">🩺 Kirim ke Dokter</button>
+            <button class="btn" id="btn-konsultasi-pasien" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:12px;padding:8px 16px;display:none;">🩺 Kirim ke Dokter</button>
             <button class="btn btn-danger" id="btn-hapus-pasien" style="padding:8px 16px;font-size:12px;display:none;" onclick="hapusPasien()">🗑️ Hapus</button>
           </div>
         </div>
@@ -403,14 +403,32 @@
 
       <!-- ========== LAPORAN ========== -->
       <div class="page" id="page-laporan">
-        <div class="section-header" style="margin-bottom:20px;">
-          <div class="section-title" style="font-size:20px;">📊 Laporan & Statistik</div>
-          <div style="display:flex;gap:8px;">
+        <div class="section-header" style="margin-bottom:16px;">
+          <div class="section-title" style="font-size:20px;">📊 Laporan &amp; Statistik</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-ghost" style="font-size:12px;padding:8px 12px;" onclick="downloadCsvTemplate()">📄 Template CSV</button>
             <button class="btn btn-accent" style="font-size:12px;padding:8px 12px;" onclick="document.getElementById('csv-import-input').click()">📤 Import Pasien</button>
             <button class="btn btn-primary" style="font-size:12px;padding:8px 12px;" onclick="downloadReportExcel()">⬇ Ekspor CSV</button>
+            <button class="btn" style="font-size:12px;padding:8px 12px;background:#dc2626;color:white;border:none;border-radius:8px;cursor:pointer;" onclick="downloadReportPDF()">📄 Ekspor PDF</button>
           </div>
           <input type="file" id="csv-import-input" accept=".csv" style="display:none;" onchange="handleCSVImport(this)">
+        </div>
+        <!-- Filter Wilayah -->
+        <div class="card" style="margin-bottom:16px;padding:14px 16px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:700;color:var(--text-muted);">🗺️ Filter Wilayah:</span>
+            <select id="laporan-filter-desa" class="form-input" style="width:auto;padding:6px 14px;font-size:13px;max-width:220px;" onchange="renderLaporan()">
+              <option value="">Semua Wilayah</option>
+              <option>Alas Rajah</option><option>Bates</option><option>Blega</option>
+              <option>Blega Oloh</option><option>Gigir</option><option>Kajjan</option>
+              <option>Kampao</option><option>Karang Gayam</option><option>Karang Nangkah</option>
+              <option>Karang Panasan</option><option>Karpote</option><option>Ko'olan</option>
+              <option>Lomaer</option><option>Lombang Dajah</option><option>Lombang Laok</option>
+              <option>Nyor Manes</option><option>Pangeran Gedungan</option><option>Panjalinan</option>
+              <option>Rosep</option>
+            </select>
+            <span id="laporan-filter-info" style="font-size:12px;color:var(--text-muted);"></span>
+          </div>
         </div>
         <div class="grid-3">
           <div class="card">
@@ -440,6 +458,79 @@
             <canvas id="reportChart"></canvas>
           </div>
         </div>
+
+        <!-- Laporan Aktivitas Petugas -->
+        <div class="card" style="margin-top:20px;" id="laporan-petugas-card">
+          <div class="section-header" style="margin-bottom:16px;">
+            <div class="section-title">👷 Aktivitas Petugas</div>
+            <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px;" onclick="renderLaporanPetugas()">🔄 Refresh</button>
+          </div>
+          <div class="table-responsive">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead>
+                <tr style="background:var(--bg);">
+                  <th style="padding:10px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">Nama Petugas</th>
+                  <th style="padding:10px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">Desa Wilayah</th>
+                  <th style="padding:10px;text-align:center;font-weight:700;color:var(--text-muted);font-size:11px;">Pasien</th>
+                  <th style="padding:10px;text-align:center;font-weight:700;color:var(--text-muted);font-size:11px;">PMO Dicatat</th>
+                  <th style="padding:10px;text-align:center;font-weight:700;color:var(--text-muted);font-size:11px;">Terakhir Aktif</th>
+                </tr>
+              </thead>
+              <tbody id="laporan-petugas-body">
+                <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">Klik Refresh untuk memuat data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== MANAJEMEN AKUN ========== -->
+      <div class="page" id="page-manajemen-akun">
+
+        <!-- Hero Header -->
+        <div style="background:linear-gradient(135deg, var(--primary) 0%, #1a6db5 100%); border-radius:16px; padding:24px 28px; margin-bottom:24px; color:white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="font-size:22px; font-weight:800; margin-bottom:4px;">🔐 Manajemen Akun & Hak Akses</div>
+            <div style="font-size:13px; opacity:0.8;">Kelola seluruh pengguna & hak akses sistem secara terpusat</div>
+          </div>
+          <button class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1.5px solid rgba(255,255,255,0.4); backdrop-filter:blur(8px); font-weight:700; display:flex;align-items:center;gap:8px;" onclick="openModalAkun()">
+            <span style="font-size:18px;">+</span> Tambah Akun Baru
+          </button>
+        </div>
+
+        <!-- Stats Summary -->
+        <div id="akun-stats-row" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-bottom:20px;"></div>
+
+        <!-- Filter Bar -->
+        <div class="card" style="margin-bottom:20px; padding:16px;">
+          <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+            <!-- Search -->
+            <div style="position:relative; flex:1; min-width:200px;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;opacity:0.5;">🔍</span>
+              <input type="text" id="akun-search" class="form-input" placeholder="Cari nama atau username..." style="padding-left:36px; font-size:13px;" oninput="filterAkun()">
+            </div>
+            <!-- Role Filter -->
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="akun-filter-btn active" data-role="all" onclick="setAkunFilter('all',this)">Semua</button>
+              <button class="akun-filter-btn" data-role="dokter" onclick="setAkunFilter('dokter',this)">👨‍⚕️ Dokter</button>
+              <button class="akun-filter-btn" data-role="petugas" onclick="setAkunFilter('petugas',this)">🏥 Petugas</button>
+              <button class="akun-filter-btn" data-role="pemegang" onclick="setAkunFilter('pemegang',this)">📊 Pemegang</button>
+              <button class="akun-filter-btn" data-role="pendamping" onclick="setAkunFilter('pendamping',this)">👨‍👩‍👧 Pendamping</button>
+              <button class="akun-filter-btn" data-role="admin" onclick="setAkunFilter('admin',this)">👑 Admin</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Result count -->
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; padding:0 4px;">
+          Menampilkan <span id="akun-result-count" style="font-weight:700; color:var(--primary);">-</span> akun
+        </div>
+
+        <!-- User Cards Grid -->
+        <div id="user-list-body" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px;">
+          <!-- Populated by renderManajemenAkun() -->
+        </div>
+
       </div>
 
       <!-- ========== PROFIL ========== -->
@@ -516,6 +607,22 @@
                   <div class="form-group">
                     <label class="form-label">No. Telepon / WhatsApp</label>
                     <input class="form-input" type="text" id="profil-phone">
+                  </div>
+                </div>
+                <div class="form-row" id="profil-row-3" style="display:none;">
+                  <div class="form-group">
+                    <label class="form-label">Instansi / Faskes</label>
+                    <input class="form-input" type="text" id="profil-instansi">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Jabatan</label>
+                    <input class="form-input" type="text" id="profil-jabatan">
+                  </div>
+                </div>
+                <div class="form-group" id="profil-desa-container" style="display:none;margin-top:12px;">
+                  <label class="form-label">Wilayah Tugas (Bisa pilih lebih dari satu)</label>
+                  <div id="profil-desa-multiselect" style="display:flex;gap:8px;flex-wrap:wrap;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg);">
+                    <!-- Checkboxes populated via JS -->
                   </div>
                 </div>
               </div>
@@ -969,11 +1076,61 @@
     </div>
   </div>
 
-<!-- TOAST CONTAINER -->
-<div id="toast-container"></div>
+  <!-- MODAL: KELOLA AKUN -->
+  <div id="modal-akun" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Tambah Akun Baru</div>
+        <button class="modal-close" onclick="closeModal('modal-akun')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nama Lengkap *</label>
+          <input type="text" id="akun-nama" class="form-input" placeholder="Contoh: dr. Ahmad">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Username *</label>
+            <input type="text" id="akun-username" class="form-input" placeholder="username">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password *</label>
+            <input type="password" id="akun-password" class="form-input" placeholder="******">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role *</label>
+          <select id="akun-role" class="form-select">
+            <option value="dokter">Dokter</option>
+            <option value="petugas">Petugas (Desa)</option>
+            <option value="pemegang">Pemegang Program</option>
+            <option value="pendamping">Pendamping / Keluarga</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instansi / Desa</label>
+          <input type="text" id="akun-instansi" class="form-input" placeholder="Puskesmas / Desa ...">
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:10px; padding:14px; font-weight:700;" onclick="simpanAkun()">
+          💾 Simpan Data Akun
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container"></div>
 
 <!-- ==================== CHART JS ==================== -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+
+<!-- ==================== PDF EXPORT ==================== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+
+<!-- ==================== CHART.JS ==================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
 
 <!-- ==================== FIREBASE SDK ==================== -->
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js" defer></script>
