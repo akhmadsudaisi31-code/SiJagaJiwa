@@ -303,6 +303,9 @@
           <div>
             <div class="section-title" style="font-size:20px;">Data Pasien ODGJ</div>
             <div style="font-size:13px;color:var(--text-muted);margin-top:4px;"><span class="realtime-dot"></span>Terpantau real-time</div>
+            <div style="font-size:13px;color:var(--text-dark);margin-top:8px;font-weight:600;background:var(--bg-hover);padding:6px 12px;border-radius:6px;display:inline-block;">
+              Total Pasien: <span id="count-total-pasien">0</span> <span style="margin:0 8px;color:var(--border);">|</span> Meninggal: <span id="count-meninggal-pasien" style="color:var(--danger, #dc2626);">0</span>
+            </div>
           </div>
           <button class="btn btn-primary" id="btn-tambah-pasien" onclick="openModal('modal-tambah-pasien')">+ Tambah Pasien</button>
         </div>
@@ -413,7 +416,7 @@
           </div>
           <input type="file" id="csv-import-input" accept=".csv" style="display:none;" onchange="handleCSVImport(this)">
         </div>
-        <!-- Filter Wilayah -->
+        <!-- Filter Wilayah & Tahun -->
         <div class="card" style="margin-bottom:16px;padding:14px 16px;">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <span style="font-size:13px;font-weight:700;color:var(--text-muted);">🗺️ Filter Wilayah:</span>
@@ -427,7 +430,17 @@
               <option>Nyor Manes</option><option>Pangeran Gedungan</option><option>Panjalinan</option>
               <option>Rosep</option>
             </select>
-            <span id="laporan-filter-info" style="font-size:12px;color:var(--text-muted);"></span>
+            
+            <span style="font-size:13px;font-weight:700;color:var(--text-muted);margin-left:8px;">📅 Filter Tahun:</span>
+            <select id="laporan-filter-tahun" class="form-input" style="width:auto;padding:6px 14px;font-size:13px;" onchange="renderLaporan()">
+              <option value="">Semua Tahun</option>
+              <option value="2027">2027</option>
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+            </select>
+
+            <span id="laporan-filter-info" style="font-size:12px;color:var(--text-muted);width:100%;"></span>
           </div>
         </div>
         <div class="grid-3">
@@ -435,9 +448,15 @@
             <div class="section-title" style="margin-bottom:16px;">Rekap Bulan Ini</div>
             <div id="laporan-summary"></div>
           </div>
-          <div class="card">
-            <div class="section-title" style="margin-bottom:16px;">Kepatuhan Obat</div>
-            <div id="laporan-kepatuhan"></div>
+          <div class="card" style="display:flex;flex-direction:column;max-height:600px;">
+            <div class="section-title" style="margin-bottom:12px;">Kepatuhan Obat</div>
+            <input type="text" class="form-input" id="kepatuhan-search" placeholder="Cari nama pasien..." style="padding:6px 10px;font-size:12px;margin-bottom:12px;" oninput="renderKepatuhanObat(1)">
+            <div id="laporan-kepatuhan" style="overflow-y:auto;flex-grow:1;padding-right:4px;"></div>
+            <div id="kepatuhan-pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:11px;">
+              <button class="btn btn-ghost" style="padding:4px 8px;" onclick="renderKepatuhanObat(window.kepatuhanPage - 1)">← Prev</button>
+              <span id="kepatuhan-page-info">Hal 1</span>
+              <button class="btn btn-ghost" style="padding:4px 8px;" onclick="renderKepatuhanObat(window.kepatuhanPage + 1)">Next →</button>
+            </div>
           </div>
           <div class="card">
             <div class="section-title" style="margin-bottom:16px;">Distribusi Diagnosis</div>
@@ -459,18 +478,18 @@
           </div>
         </div>
 
-        <!-- Laporan Aktivitas Petugas -->
+        <!-- Laporan Kinerja Akun -->
         <div class="card" style="margin-top:20px;" id="laporan-petugas-card">
           <div class="section-header" style="margin-bottom:16px;">
-            <div class="section-title">👷 Aktivitas Petugas</div>
+            <div class="section-title">📊 Monitor Kinerja Akun (PMO)</div>
             <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px;" onclick="renderLaporanPetugas()">🔄 Refresh</button>
           </div>
           <div class="table-responsive">
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
               <thead>
                 <tr style="background:var(--bg);">
-                  <th style="padding:10px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">Nama Petugas</th>
-                  <th style="padding:10px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">Desa Wilayah</th>
+                  <th style="padding:10px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">Nama Akun</th>
+                  <th style="padding:10px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">Role / Wilayah</th>
                   <th style="padding:10px;text-align:center;font-weight:700;color:var(--text-muted);font-size:11px;">Pasien</th>
                   <th style="padding:10px;text-align:center;font-weight:700;color:var(--text-muted);font-size:11px;">PMO Dicatat</th>
                   <th style="padding:10px;text-align:center;font-weight:700;color:var(--text-muted);font-size:11px;">Terakhir Aktif</th>
@@ -695,8 +714,22 @@
               <option value="stable">Stabil</option>
               <option value="monitor">Perlu Pantau</option>
               <option value="critical">Kritis</option>
+              <option value="meninggal">Meninggal</option>
             </select>
           </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Tanggal Lahir</label><input class="form-input" id="edit-p-tgl" type="date"></div>
+          <div class="form-group"><label class="form-label">Jenis Kelamin</label>
+            <select class="form-select" id="edit-p-jk">
+              <option value="L">Laki-laki</option>
+              <option value="P">Perempuan</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nama Pendamping</label><input class="form-input" id="edit-p-pendamping"></div>
+          <div class="form-group"><label class="form-label">Obat Utama</label><input class="form-input" id="edit-p-obat"></div>
         </div>
         <div class="form-group"><label class="form-label">Alamat</label><textarea class="form-textarea" id="edit-p-alamat"></textarea></div>
         <div class="form-group">

@@ -131,8 +131,8 @@ function renderDashboardPatients() {
 }
 
 function patientHTML(p) {
-  const statusMap = { stable:'status-stable', monitor:'status-monitor', critical:'status-critical' };
-  const statusLabel = { stable:'Stabil', monitor:'Perlu Pantau', critical:'Kritis' };
+  const statusMap = { stable:'status-stable', monitor:'status-monitor', critical:'status-critical', meninggal:'status-meninggal' };
+  const statusLabel = { stable:'Stabil', monitor:'Perlu Pantau', critical:'Kritis', meninggal:'Meninggal' };
   
   let consultationBtn = '';
   if (currentRole === 'pemegang' && !p.assignedDoctorId) {
@@ -169,7 +169,12 @@ async function showPatientDetail(id) {
   showPage('patient-detail');
   
   document.getElementById('detail-avatar').textContent = p.name.split(' ').map(w => w[0]).join('').slice(0, 2);
-  document.getElementById('detail-name').textContent = p.name;
+  
+  const statusMap = { stable:'status-stable', monitor:'status-monitor', critical:'status-critical', meninggal:'status-meninggal' };
+  const statusLabel = { stable:'Stabil', monitor:'Perlu Pantau', critical:'Kritis', meninggal:'Meninggal' };
+  const badgeHTML = p.status ? `<span class="p-status ${statusMap[p.status] || ''}" style="margin-left:12px;font-size:11px;vertical-align:middle;">${statusLabel[p.status] || p.status}</span>` : '';
+  
+  document.getElementById('detail-name').innerHTML = `<span id="detail-name-text">${p.name}</span> ${badgeHTML}`;
   document.getElementById('detail-meta').textContent = `${p.gender === 'L' ? 'Laki-laki' : 'Perempuan'}, ${p.age} tahun • ${p.diagnosis}`;
   document.getElementById('detail-info').innerHTML = `
     <div class="report-row"><div class="report-label">NIK</div><div class="report-val" style="font-size:12px">${p.nik}</div></div>
@@ -458,8 +463,11 @@ async function renderBarChart() {
     // Fetch PMO Logs for the last 7 days across all patients
     const patientsWithId = PATIENTS.filter(p => p.firebaseId);
     try {
+      const sevenDaysAgoObj = new Date();
+      sevenDaysAgoObj.setDate(sevenDaysAgoObj.getDate() - 7);
+      const sevenDaysAgoStr = sevenDaysAgoObj.toISOString();
       const pmoResults = await Promise.all(
-        patientsWithId.map(p => db.collection('patients').doc(p.firebaseId).collection('pmo_logs').get())
+        patientsWithId.map(p => db.collection('patients').doc(p.firebaseId).collection('pmo_logs').where('timestamp', '>=', sevenDaysAgoStr).get().catch(() => ({ forEach: () => {} })))
       );
       
       pmoResults.forEach(snap => {
@@ -561,6 +569,13 @@ function renderStockAlerts() {
 }
 
 // ============ FULL PATIENTS ============
+function updatePatientCounts(pool) {
+  const countTotal = document.getElementById('count-total-pasien');
+  const countMeninggal = document.getElementById('count-meninggal-pasien');
+  if (countTotal) countTotal.textContent = pool.length;
+  if (countMeninggal) countMeninggal.textContent = pool.filter(p => p.status === 'meninggal').length;
+}
+
 async function renderFullPatients() {
   const session = getCurrentSession();
   const el = document.getElementById('full-patient-list');
@@ -570,6 +585,7 @@ async function renderFullPatients() {
   
   const displayPatients = getMyPatients(session);
   
+  updatePatientCounts(displayPatients);
   if (el) el.innerHTML = displayPatients.map(p => patientHTML(p)).join('');
   
   if (pmoPasienList) {
@@ -632,6 +648,7 @@ function filterPatients(q) {
   const pool = getMyPatients(session);
 
   if (!q || !q.trim()) {
+    updatePatientCounts(pool);
     if (el) el.innerHTML = pool.map(p => patientHTML(p)).join('');
     return;
   }
@@ -646,6 +663,7 @@ function filterPatients(q) {
     p.pendamping?.toLowerCase().includes(qLow)
   );
 
+  updatePatientCounts(filtered);
   if (el) el.innerHTML = filtered.length
     ? filtered.map(p => patientHTML(p)).join('')
     : '<div style="text-align:center;padding:32px;color:var(--text-muted);">Pasien tidak ditemukan</div>';
@@ -1535,6 +1553,16 @@ async function renderLaporan() {
     );
   }
 
+  // Apply additional tahun filter from dropdown
+  const tahunFilterEl = document.getElementById('laporan-filter-tahun');
+  const selectedTahun = tahunFilterEl ? tahunFilterEl.value : '';
+  if (selectedTahun) {
+    displayPatients = displayPatients.filter(p => {
+      const d = new Date(p.createdAt || p.id);
+      return d.getFullYear().toString() === selectedTahun;
+    });
+  }
+
   // Update filter info label
   const filterInfo = document.getElementById('laporan-filter-info');
   if (filterInfo) {
@@ -1565,8 +1593,8 @@ async function renderLaporan() {
     const patientsWithId = displayPatients.filter(p => p.firebaseId);
     const countResults = await Promise.all(
       patientsWithId.map(p =>
-        db.collection('patients').doc(p.firebaseId).collection('pmo_logs').get()
-          .then(snap => snap.size)
+        db.collection('patients').doc(p.firebaseId).collection('pmo_logs').count().get()
+          .then(snap => snap.data().count)
           .catch(() => 0)
       )
     );
@@ -1578,15 +1606,7 @@ async function renderLaporan() {
 
   renderSummary(pmoTercatat);
 
-  document.getElementById('laporan-kepatuhan').innerHTML = displayPatients.map(p => `
-    <div style="margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;">
-        <span>${p.name}</span><span style="font-weight:800;">${p.pmo || 0}%</span>
-      </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${p.pmo || 0}%"></div></div>
-    </div>
-  `).join('') || '<div style="color:var(--text-muted);text-align:center;padding:20px;">Belum ada data kepatuhan</div>';
-
+  renderKepatuhanObat(1);
   // Dynamic Diagnosis Count
   const diagCount = {};
   displayPatients.forEach(p => {
@@ -1602,6 +1622,46 @@ async function renderLaporan() {
   setTimeout(updateReportChart, 100);
 }
 
+window.kepatuhanPage = 1;
+function renderKepatuhanObat(page) {
+  const session = getCurrentSession();
+  let displayPatients = getMyPatients(session);
+  const desaFilterEl = document.getElementById('laporan-filter-desa');
+  const selectedDesa = desaFilterEl ? desaFilterEl.value.trim() : '';
+  if (selectedDesa) {
+    const cleanSelected = normalizeDesa(selectedDesa);
+    displayPatients = displayPatients.filter(p => normalizeDesa(p.desa) === cleanSelected || normalizeDesa(p.alamat) === cleanSelected);
+  }
+
+  const searchEl = document.getElementById('kepatuhan-search');
+  if (searchEl && searchEl.value.trim()) {
+    const q = searchEl.value.trim().toLowerCase();
+    displayPatients = displayPatients.filter(p => p.name.toLowerCase().includes(q));
+  }
+
+  const perPage = 20;
+  const totalPages = Math.max(1, Math.ceil(displayPatients.length / perPage));
+  if (page !== undefined) window.kepatuhanPage = page;
+  if (window.kepatuhanPage < 1) window.kepatuhanPage = 1;
+  if (window.kepatuhanPage > totalPages) window.kepatuhanPage = totalPages;
+
+  const start = (window.kepatuhanPage - 1) * perPage;
+  const paginated = displayPatients.slice(start, start + perPage);
+
+  document.getElementById('laporan-kepatuhan').innerHTML = paginated.map(p => `
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+        <span style="font-weight:600;color:var(--text-dark);">${p.name}</span><span style="font-weight:800;color:${(p.pmo || 0) >= 80 ? 'var(--success)' : (p.pmo || 0) >= 50 ? 'var(--warning)' : 'var(--danger)'};">${p.pmo || 0}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p.pmo || 0}%;background:${(p.pmo || 0) >= 80 ? 'var(--success)' : (p.pmo || 0) >= 50 ? 'var(--warning)' : 'var(--danger)'}"></div></div>
+    </div>
+  `).join('') || '<div style="color:var(--text-muted);text-align:center;padding:20px;font-size:12px;">Belum ada data kepatuhan</div>';
+
+  const infoEl = document.getElementById('kepatuhan-page-info');
+  if (infoEl) infoEl.textContent = `Hal ${window.kepatuhanPage} dari ${totalPages}`;
+}
+
+
 function downloadReportExcel() {
   const session = getCurrentSession();
   
@@ -1615,6 +1675,15 @@ function downloadReportExcel() {
       normalizeDesa(p.desa) === cleanSelected ||
       normalizeDesa(p.alamat) === cleanSelected
     );
+  }
+
+  const tahunFilterEl = document.getElementById('laporan-filter-tahun');
+  const selectedTahun = tahunFilterEl ? tahunFilterEl.value : '';
+  if (selectedTahun) {
+    displayPatients = displayPatients.filter(p => {
+      const d = new Date(p.createdAt || p.id);
+      return d.getFullYear().toString() === selectedTahun;
+    });
   }
 
   if (displayPatients.length === 0) {
@@ -1694,6 +1763,15 @@ async function downloadReportPDF() {
     );
   }
 
+  const tahunFilterEl = document.getElementById('laporan-filter-tahun');
+  const selectedTahun = tahunFilterEl ? tahunFilterEl.value : '';
+  if (selectedTahun) {
+    displayPatients = displayPatients.filter(p => {
+      const d = new Date(p.createdAt || p.id);
+      return d.getFullYear().toString() === selectedTahun;
+    });
+  }
+
   if (displayPatients.length === 0) {
     showToast('❌ Tidak ada data untuk diekspor', 'error');
     return;
@@ -1753,14 +1831,17 @@ async function renderLaporanPetugas() {
   el.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">⌛ Memuat data aktivitas petugas...</td></tr>';
 
   try {
-    const petugasList = USERS.filter(u => u.role === 'petugas');
+    const petugasList = USERS.filter(u => u.role === 'petugas' || u.role === 'pendamping' || u.role === 'pemegang');
     if (petugasList.length === 0) {
-      el.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">Tidak ada akun petugas yang terdaftar</td></tr>';
+      el.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">Tidak ada akun yang dapat dimonitor</td></tr>';
       return;
     }
 
     const results = await Promise.all(petugasList.map(async petugas => {
       const desaList = getUserDesas(petugas);
+      const roleLabel = petugas.role.charAt(0).toUpperCase() + petugas.role.slice(1);
+      const wilayahText = desaList.length > 0 ? desaList.join(', ') : (petugas.instansi || '-');
+      const roleWilayah = `<span style="font-size:10px;color:var(--primary);">${roleLabel}</span><br>${wilayahText}`;
       
       // Hitung pasien yang menjadi tanggung jawab petugas ini
       const myPatients = PATIENTS.filter(p => 
@@ -1771,26 +1852,32 @@ async function renderLaporanPetugas() {
       let totalPmo = 0;
       let lastActive = null;
       
-      // Ambil log PMO dari pasien-pasien petugas tersebut (limit 10 pasien teratas untuk optimasi)
-      const checkPatients = myPatients.slice(0, 10);
-      for (const p of checkPatients) {
+      // Ambil log PMO dari pasien-pasien petugas tersebut
+      for (const p of myPatients) {
         if (!p.firebaseId) continue;
-        const logs = await db.collection('patients').doc(p.firebaseId)
+        const countSnap = await db.collection('patients').doc(p.firebaseId)
           .collection('pmo_logs')
           .where('recordedBy', '==', petugas.nama)
-          .orderBy('timestamp', 'desc')
-          .limit(5)
-          .get()
-          .catch(() => ({ empty: true, size: 0 }));
-          
-        totalPmo += logs.size;
-        if (!logs.empty) {
-          const ts = logs.docs[0].data().timestamp;
-          if (!lastActive || ts > lastActive) lastActive = ts;
+          .count().get().catch(() => ({ data: () => ({ count: 0 }) }));
+        
+        const count = countSnap.data().count;
+        if (count > 0) {
+          totalPmo += count;
+          const lastSnap = await db.collection('patients').doc(p.firebaseId)
+            .collection('pmo_logs')
+            .where('recordedBy', '==', petugas.nama)
+            .orderBy('timestamp', 'desc').limit(1).get().catch(() => ({ empty: true }));
+            
+          if (!lastSnap.empty) {
+            const ts = lastSnap.docs[0].data().timestamp;
+            if (!lastActive || ts > lastActive) {
+              lastActive = ts;
+            }
+          }
         }
       }
       
-      return { petugas, desaList, myPatientsCount: myPatients.length, totalPmo, lastActive };
+      return { petugas, desaList, roleWilayah, myPatientsCount: myPatients.length, totalPmo, lastActive };
     }));
     
     // Sort berdasarkan aktivitas terakhir (paling baru di atas)
@@ -1802,10 +1889,8 @@ async function renderLaporanPetugas() {
 
     el.innerHTML = results.map(r => `
       <tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:10px;">${r.petugas.nama}</td>
-        <td style="padding:10px;">
-          ${r.desaList.length > 0 ? r.desaList.map(d => `<span style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;font-size:11px;">${d}</span>`).join(' ') : '-'}
-        </td>
+        <td style="padding:10px;font-weight:600;color:var(--text-dark);">${r.petugas.nama}</td>
+        <td style="padding:10px;color:var(--text-muted);font-size:12px;">${r.roleWilayah}</td>
         <td style="padding:10px;text-align:center;font-weight:600;">${r.myPatientsCount}</td>
         <td style="padding:10px;text-align:center;color:var(--primary);font-weight:600;">${r.totalPmo}</td>
         <td style="padding:10px;text-align:center;font-size:11px;color:var(--text-muted);">
@@ -2671,7 +2756,7 @@ function openEditPatient() {
     showToast('❌ Anda tidak memiliki akses untuk mengedit pasien', 'error');
     return;
   }
-  const pName = document.getElementById('detail-name').textContent;
+  const pName = document.getElementById('detail-name-text').textContent.trim();
   const p = PATIENTS.find(x => x.name === pName);
   if (!p) return;
 
@@ -2682,6 +2767,10 @@ function openEditPatient() {
   document.getElementById('edit-p-status').value = p.status || 'stable';
   document.getElementById('edit-p-alamat').value = p.alamat || '';
   document.getElementById('edit-p-desa').value = p.desa || '';
+  document.getElementById('edit-p-tgl').value = p.tanggal_lahir || '';
+  document.getElementById('edit-p-jk').value = p.gender || 'L';
+  document.getElementById('edit-p-pendamping').value = p.pendamping || '';
+  document.getElementById('edit-p-obat').value = p.obat || '';
   
   openModal('modal-edit-pasien');
 }
@@ -2698,6 +2787,10 @@ async function simpanEditPasien() {
   const status = document.getElementById('edit-p-status').value;
   const alamat = document.getElementById('edit-p-alamat').value;
   const desa = document.getElementById('edit-p-desa').value;
+  const tgl = document.getElementById('edit-p-tgl').value;
+  const jk = document.getElementById('edit-p-jk').value;
+  const pendamping = document.getElementById('edit-p-pendamping').value;
+  const obat = document.getElementById('edit-p-obat').value;
 
   if (!name) {
     showToast('❌ Nama wajib diisi!', 'error');
@@ -2705,28 +2798,40 @@ async function simpanEditPasien() {
   }
 
   try {
+    const pLocal = PATIENTS.find(x => x.firebaseId === fid);
+    let age = pLocal ? pLocal.age : 30;
+    if (tgl) {
+      const birthYear = new Date(tgl).getFullYear();
+      age = new Date().getFullYear() - birthYear;
+    }
+
     if (fid) {
       await db.collection('patients').doc(fid).update({
-        name, nik, diagnosis: diag, status, alamat, desa
+        name, nik, diagnosis: diag, status, alamat, desa,
+        tanggal_lahir: tgl, gender: jk, pendamping, obat, age
       });
     }
 
     // Update local array
-    const p = PATIENTS.find(x => x.firebaseId === fid);
-    if (p) {
-      p.name = name;
-      p.nik = nik;
-      p.diagnosis = diag;
-      p.status = status;
-      p.alamat = alamat;
-      p.desa = desa;
+    if (pLocal) {
+      pLocal.name = name;
+      pLocal.nik = nik;
+      pLocal.diagnosis = diag;
+      pLocal.status = status;
+      pLocal.alamat = alamat;
+      pLocal.desa = desa;
+      pLocal.tanggal_lahir = tgl;
+      pLocal.gender = jk;
+      pLocal.pendamping = pendamping;
+      pLocal.obat = obat;
+      pLocal.age = age;
     }
 
     closeModal('modal-edit-pasien');
     showToast('✅ Data pasien berhasil diperbarui!', 'success');
     
     // Refresh detail page
-    showPatientDetail(p.id);
+    if (pLocal) showPatientDetail(pLocal.id);
     renderDashboardPatients();
     renderFullPatients();
   } catch (e) {
@@ -3171,7 +3276,7 @@ async function hapusPasien() {
     return;
   }
 
-  const pName = document.getElementById('detail-name').textContent;
+  const pName = document.getElementById('detail-name-text').textContent.trim();
   const p = PATIENTS.find(x => x.name === pName);
   if (!p || !p.firebaseId) {
     showToast('❌ Gagal: Data pasien tidak valid', 'error');

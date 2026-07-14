@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sijagajiwa-v4';
+const CACHE_NAME = 'sijagajiwa-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -44,9 +44,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // For local app scripts/styles, use Network-First to ensure updates are seen
+  // For local app scripts/styles/html, use Network-First to ensure updates are seen
   const isLocalAsset = event.request.url.includes(self.location.origin) && 
-                       (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html'));
+                       (url.pathname === '/' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html'));
 
   if (isLocalAsset) {
     event.respondWith(
