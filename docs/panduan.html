@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Pengguna SiJagaJiwa</title>
+    <!-- Marked.js for parsing Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f4c81;
+            --text: #334155;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --bg-light: #f8fafc;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        h1, h2, h3, h4 {
+            color: var(--primary);
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        h1 { font-size: 28px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        h2 { font-size: 22px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        h3 { font-size: 18px; }
+        p, li { font-size: 14px; }
+        a { color: var(--primary); text-decoration: none; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+        th, td {
+            border: 1px solid var(--border);
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--bg-light);
+            font-weight: 600;
+            color: var(--primary);
+        }
+        tr:nth-child(even) { background-color: #fcfcfc; }
+        blockquote {
+            border-left: 4px solid var(--primary);
+            background: var(--bg-light);
+            margin: 0;
+            padding: 12px 20px;
+            border-radius: 0 8px 8px 0;
+            font-size: 13.5px;
+        }
+        code {
+            background: var(--bg-light);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        hr {
+            border: 0;
+            border-top: 1px solid var(--border);
+            margin: 30px 0;
+        }
+        
+        /* Alert blocks styling */
+        .alert-note { border-left-color: #3b82f6; background-color: #eff6ff; }
+        .alert-important { border-left-color: #8b5cf6; background-color: #f5f3ff; }
+        .alert-tip { border-left-color: #10b981; background-color: #ecfdf5; }
+        .alert-caution { border-left-color: #ef4444; background-color: #fef2f2; }
+
+        /* Print Specific Styles */
+        @media print {
+            body { background: white; }
+            .container { padding: 0; max-width: 100%; }
+            @page { margin: 2cm; size: A4; }
+            h2, h3 { page-break-after: avoid; }
+            table, blockquote { page-break-inside: avoid; }
+            .print-btn { display: none; }
+        }
+        
+        .print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(15, 76, 129, 0.3);
+            transition: transform 0.2s;
+        }
+        .print-btn:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <button class="print-btn" onclick="window.print()">🖨️ Simpan ke PDF</button>
+
+    <div class="container" id="content"></div>
+
+    <script id="markdown-content" type="text/markdown">
+Berikut adalah panduan lengkap dan singkat untuk ke-4 peran di aplikasi SiJagaJiwa, mencakup alur dari login hingga batas hak akses (limitasi) masing-masing peran.
+
+**LANGKAH UMUM (PENDAFTARAN & LOGIN)**
+1. **Akses:** Buka **sijagajiwa.my.id** di browser.
+2. **Daftar/Login:** Pilih **Peran** Anda terlebih dahulu (Pendamping / Petugas / Dokter / Program). Jika belum punya akun, klik **"Daftar Baru"** dan isi data. Jika sudah, masukkan Username dan Password, lalu klik **"Masuk"**.
+3. **Penting:** Notifikasi tidak muncul di luar aplikasi; klik ikon **Lonceng (🔔)** di dalam aplikasi untuk melihat pemberitahuan terbaru secara *real-time*.
+
+---
+
+### **1. KELUARGA / PENDAMPING**
+* **Batas Akses:** Hanya dapat memantau pasien **di desanya sendiri**. Tidak memiliki izin untuk menambah, mengedit, menghapus data pasien, maupun mengakses menu stok obat, laporan, dan chat.
+* **Catat Obat (PMO):** Buka menu **PMO** > klik **"+ Catat PMO"** > pilih nama pasien > isi status minum obat, gejala, dan unggah foto (opsional) > klik **"Simpan PMO"**.
+* **Buat Jadwal:** Buka menu **Jadwal** > klik **"+ Jadwalkan"** > pilih pasien > atur tipe permintaan (*Pengantaran Obat, Penjemputan Obat, atau Lapor Stok Menipis*) > klik **"Kirim Permintaan ke Petugas"**.
+* **Edit Profil:** Buka menu **Profil** untuk mengubah kata sandi, mengedit wilayah tugas, atau mengatur notifikasi.
+
+### **2. PETUGAS KESEHATAN**
+* **Batas Akses:** Hanya dapat mengelola data pasien **di wilayah tugas (desa) yang dipegang**. Tidak memiliki izin untuk menghapus pasien, merujuk pasien ke dokter, atau mengakses stok obat dan laporan lengkap.
+* **Kelola Pasien:** Buka menu **Pasien** > klik **"+ Tambah Pasien"** untuk memasukkan pasien baru, ATAU buka detail pasien dan klik **"Edit Data"** untuk mengubah status, alamat, atau diagnosis.
+* **Catat PMO Cepat:** Buka menu **PMO** > klik **"+ Catat PMO"** > pilih pasien. Waktu dan status "Sudah minum" akan terisi otomatis, cukup tambahkan catatan jika perlu > klik **"Simpan PMO"**. *Sistem akan mengirim peringatan pukul 19:00 jika ada pasien yang belum dicatat PMO-nya*.
+* **Atur Jadwal:** Buka menu **Jadwal** > klik **"+ Jadwalkan"** > atur tanggal dan alamat pengantaran > klik **"Simpan Jadwal"**.
+
+### **3. DOKTER**
+* **Batas Akses:** **HANYA bisa melihat pasien yang dirujuk (di-assign)** oleh Pemegang Program. Tidak memiliki izin untuk melihat seluruh pasien, menambah/mengedit data pasien, mencatat PMO, mengatur jadwal, dan mengelola stok obat.
+* **Pantau Pasien:** Buka menu **Pasien**. Klik nama pasien untuk melihat riwayat medis dan obatnya.
+* **Tindakan Rujukan:** Pada profil pasien, klik tombol 🩺 **"Pantau"** untuk mengobservasi lebih lanjut, ATAU klik ✅ **"Selesai"** jika konsultasi sudah tuntas (menghapus status penugasan dokter).
+* **Konsultasi Chat:** Buka menu **Chat** > klik **"+ Mulai Chat Baru"** > pilih kontak Pemegang Program > kirim pesan/foto/file terkait diskusi medis pasien.
+
+### **4. PEMEGANG PROGRAM JIWA**
+* **Batas Akses:** Memiliki **akses paling penuh** ke seluruh data pasien di semua wilayah, laporan, stok obat, jadwal, dan fitur rujukan. Satu-satunya yang tidak bisa dilakukan adalah mengatur akun sistem (Manajemen Akun hanya untuk Admin).
+* **Kelola Pasien & Rujuk:** Buka menu **Pasien**. Anda bisa menambah, mengedit, dan mengeklik 🗑 **"Hapus"** untuk menghapus data permanen. Untuk merujuk kasus, klik 🩺 **"Kirim ke Dokter"** > pilih dokter > tulis catatan medis > klik Kirim.
+* **Manajemen Stok Obat:** Buka menu **Stok Obat**. Klik **"+ Tambah Stok"** untuk menambah inventaris, atau klik **"Edit"/"Hapus"**. Sistem akan memberi *alert* ⚠ jika stok mendekati batas minimum.
+* **Ekspor Laporan:** Buka menu **Laporan** > pilih filter desa/semua wilayah > pantau grafik kepatuhan > klik **"Ekspor CSV"** atau **"Ekspor PDF"** untuk mengunduh rekap.
+</script>
+
+    <script>
+        document.getElementById('content').innerHTML = marked.parse(document.getElementById('markdown-content').textContent);
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sijagajiwa-v5';
+const CACHE_NAME = 'sijagajiwa-v6';
 const ASSETS = [
   './',
   './index.html',

@@ -446,13 +446,16 @@
           </div>
         </div>
         <div class="grid-3">
-          <div class="card">
+          <div class="card" id="card-rekap-bulan-ini">
             <div class="section-title" style="margin-bottom:16px;">Rekap Bulan Ini</div>
             <div id="laporan-summary"></div>
           </div>
           <div class="card" style="display:flex;flex-direction:column;max-height:600px;">
             <div class="section-title" style="margin-bottom:12px;">Kepatuhan Obat</div>
-            <input type="text" class="form-input" id="kepatuhan-search" placeholder="Cari nama pasien..." style="padding:6px 10px;font-size:12px;margin-bottom:12px;" oninput="renderKepatuhanObat(1)">
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+              <select id="kepatuhan-year" class="form-input" style="padding:6px;font-size:12px;flex:0 0 auto;" onchange="renderKepatuhanObat(1)"></select>
+              <input type="text" class="form-input" id="kepatuhan-search" placeholder="Cari nama pasien..." style="padding:6px 10px;font-size:12px;flex:1;" oninput="renderKepatuhanObat(1)">
+            </div>
             <div id="laporan-kepatuhan" style="overflow-y:auto;flex-grow:1;padding-right:4px;"></div>
             <div id="kepatuhan-pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:11px;">
               <button class="btn btn-ghost" style="padding:4px 8px;" onclick="renderKepatuhanObat(window.kepatuhanPage - 1)">← Prev</button>
