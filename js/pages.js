@@ -2818,7 +2818,7 @@ async function simpanEditPasien() {
 
   try {
     const pLocal = PATIENTS.find(x => x.firebaseId === fid);
-    let age = pLocal ? pLocal.age : 30;
+    let age = pLocal?.age || 30;
     if (tgl) {
       const birthYear = new Date(tgl).getFullYear();
       age = new Date().getFullYear() - birthYear;
