@@ -2823,6 +2823,12 @@ async function simpanEditPasien() {
       const birthYear = new Date(tgl).getFullYear();
       age = new Date().getFullYear() - birthYear;
     }
+    
+    const btn = document.getElementById('btn-simpan-edit-pasien');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Menyimpan...';
+    }
 
     if (fid) {
       await db.collection('patients').doc(fid).update({
@@ -2846,6 +2852,11 @@ async function simpanEditPasien() {
       pLocal.age = age;
     }
 
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = 'Simpan Perubahan';
+    }
+
     closeModal('modal-edit-pasien');
     showToast('✅ Data pasien berhasil diperbarui!', 'success');
     
@@ -2855,6 +2866,11 @@ async function simpanEditPasien() {
     renderFullPatients();
   } catch (e) {
     console.error("Failed to update patient", e);
+    const btn = document.getElementById('btn-simpan-edit-pasien');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = 'Simpan Perubahan';
+    }
     showToast('❌ Gagal menyimpan perubahan', 'error');
   }
 }

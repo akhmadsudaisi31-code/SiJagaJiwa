@@ -110,8 +110,7 @@ function enterApp(role, name, icon) {
   document.getElementById("auth-page").classList.remove("show");
   document.getElementById("app").classList.add("show");
 
-  // Start real-time sync
-  if (typeof startGlobalRealTimeSync === "function") startGlobalRealTimeSync();
+  // Start real-time sync is already handled globally on load
 
   // Sync all user UI elements from session
   syncUserUI();
@@ -391,6 +390,10 @@ function showPage(page) {
   }
   if (page === "profil") renderProfil();
   if (page === "manajemen-akun" && typeof renderManajemenAkun === 'function') renderManajemenAkun();
+  if (page === "laporan") {
+    renderLaporan();
+    renderLaporanPetugas();
+  }
   closeSidebar();
 }
 
@@ -456,8 +459,14 @@ function initPages() {
     renderNotifications();
     renderStokFull();
     renderPickupSchedule();
-    renderLaporan();
-    renderLaporanPetugas();
+    
+    // Optimasi: Hanya render halaman laporan (yang memanggil .get() Firestore) jika halamannya sedang aktif
+    const pageLaporan = document.getElementById('page-laporan');
+    if (pageLaporan && pageLaporan.classList.contains('active')) {
+      renderLaporan();
+      renderLaporanPetugas();
+    }
+    
     renderProfil();
     if (typeof renderManajemenAkun === 'function') renderManajemenAkun();
   }, 100);
