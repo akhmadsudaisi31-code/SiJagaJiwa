@@ -2831,10 +2831,11 @@ async function simpanEditPasien() {
     }
 
     if (fid) {
-      await db.collection('patients').doc(fid).update({
+      // Tidak di-await agar UI langsung merespons secara instan. Firestore akan menyinkronkannya di background.
+      db.collection('patients').doc(fid).update({
         name, nik, diagnosis: diag, status, alamat, desa,
         tanggal_lahir: tgl, gender: jk, pendamping, obat, age
-      });
+      }).catch(e => console.error('Background sync failed:', e));
     }
 
     // Update local array
