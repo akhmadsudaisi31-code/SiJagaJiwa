@@ -670,15 +670,26 @@ function filterPatients(q) {
 }
 
 // ============ PMO FULL ============
-function renderPMOFull() {
+window.pmoPage = window.pmoPage || 1;
+function renderPMOFull(page = window.pmoPage) {
+  window.pmoPage = page;
   const session = getCurrentSession();
   const el = document.getElementById('pmo-full-list');
   const el2 = document.getElementById('pmo-compliance');
+  const pgList = document.getElementById('pmo-list-pagination');
+  const pgComp = document.getElementById('pmo-comp-pagination');
+  
   const displayPatients = getMyPatients(session);
+  
+  // Pagination
+  const pageSize = 15;
+  const total = displayPatients.length;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  const current = Math.min(Math.max(1, page), totalPages);
+  const start = (current - 1) * pageSize;
+  const paginated = displayPatients.slice(start, start + pageSize);
 
-  // Broadened Visibility: Show ALL patients in Monitor PMO for pemegang/admin
-
-  el.innerHTML = displayPatients.map((p, i) => `
+  el.innerHTML = paginated.map((p, i) => `
     <div style="padding:16px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <div style="flex:1;">
@@ -691,7 +702,7 @@ function renderPMOFull() {
     </div>
   `).join('');
 
-  el2.innerHTML = displayPatients.map(p => `
+  el2.innerHTML = paginated.map(p => `
     <div style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
         <span style="font-size:12px;font-weight:600;">${p.name}</span>
@@ -700,6 +711,17 @@ function renderPMOFull() {
       <div class="progress-bar"><div class="progress-fill" style="width:${p.pmo}%;background:${p.pmo >= 80 ? 'var(--success)' : p.pmo >= 60 ? 'var(--warning)' : 'var(--danger)'}"></div></div>
     </div>
   `).join('');
+  
+  const btnHtml = `
+    <div>Halaman ${current} dari ${totalPages} (Total ${total} pasien)</div>
+    <div style="display:flex; gap:4px;">
+       <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" ${current === 1 ? 'disabled' : ''} onclick="renderPMOFull(${current-1})">Prev</button>
+       <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" ${current === totalPages ? 'disabled' : ''} onclick="renderPMOFull(${current+1})">Next</button>
+    </div>
+  `;
+  
+  if (pgList) pgList.innerHTML = btnHtml;
+  if (pgComp) pgComp.innerHTML = btnHtml;
 }
 
 // ============ CHAT ============
@@ -1593,8 +1615,8 @@ async function renderLaporan() {
     const patientsWithId = displayPatients.filter(p => p.firebaseId);
     const countResults = await Promise.all(
       patientsWithId.map(p =>
-        db.collection('patients').doc(p.firebaseId).collection('pmo_logs').count().get()
-          .then(snap => snap.data().count)
+        db.collection('patients').doc(p.firebaseId).collection('pmo_logs').get()
+          .then(snap => snap.size)
           .catch(() => 0)
       )
     );
@@ -1858,18 +1880,15 @@ async function renderLaporanPetugas() {
         const countSnap = await db.collection('patients').doc(p.firebaseId)
           .collection('pmo_logs')
           .where('recordedBy', '==', petugas.nama)
-          .count().get().catch(() => ({ data: () => ({ count: 0 }) }));
+          .get().catch(() => ({ size: 0, empty: true, docs: [] }));
         
-        const count = countSnap.data().count;
+        const count = countSnap.size;
         if (count > 0) {
           totalPmo += count;
-          const lastSnap = await db.collection('patients').doc(p.firebaseId)
-            .collection('pmo_logs')
-            .where('recordedBy', '==', petugas.nama)
-            .orderBy('timestamp', 'desc').limit(1).get().catch(() => ({ empty: true }));
-            
-          if (!lastSnap.empty) {
-            const ts = lastSnap.docs[0].data().timestamp;
+          // Optimasi: karena sudah di .get(), kita bisa memilah timestamp tanpa query lagi
+          const latestDoc = countSnap.docs.sort((a,b) => (b.data().timestamp || '').localeCompare(a.data().timestamp || ''))[0];
+          if (latestDoc) {
+            const ts = latestDoc.data().timestamp;
             if (!lastActive || ts > lastActive) {
               lastActive = ts;
             }

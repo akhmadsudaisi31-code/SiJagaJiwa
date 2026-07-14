@@ -357,13 +357,15 @@
           <button class="btn btn-primary" onclick="openPmoModal()">+ Catat PMO</button>
         </div>
         <div class="grid-2">
-          <div class="card">
+          <div class="card" style="display:flex;flex-direction:column;max-height:700px;">
             <div class="section-title" style="margin-bottom:12px;">Jadwal Minum Obat Hari Ini</div>
-            <div id="pmo-full-list"></div>
+            <div id="pmo-full-list" style="overflow-y:auto;flex-grow:1;padding-right:4px;"></div>
+            <div id="pmo-list-pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:11px;"></div>
           </div>
-          <div class="card">
+          <div class="card" style="display:flex;flex-direction:column;max-height:700px;">
             <div class="section-title" style="margin-bottom:16px;">Tingkat Kepatuhan (Real-time)</div>
-            <div id="pmo-compliance"></div>
+            <div id="pmo-compliance" style="overflow-y:auto;flex-grow:1;padding-right:4px;"></div>
+            <div id="pmo-comp-pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:11px;"></div>
           </div>
         </div>
       </div>
